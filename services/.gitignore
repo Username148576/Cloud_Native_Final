@@ -1,0 +1,27 @@
+# 環境變數（絕對不能上傳）
+.env
+**/.env
+
+# Node modules
+node_modules/
+**/node_modules/
+
+# PM2 logs
+logs/
+*.log
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# 編輯器
+.vscode/
+.idea/
+
+# SSH key（萬一有人放在這裡）
+*.pem
+*.key
+
+api-tester.html

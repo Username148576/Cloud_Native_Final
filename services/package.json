@@ -1,0 +1,18 @@
+{
+  "name": "ordering-system-services",
+  "version": "1.0.0",
+  "private": true,
+  "description": "企業訂餐系統微服務根目錄",
+  "scripts": {
+    "deploy": "bash scripts/deploy.sh",
+    "deploy:init": "bash scripts/deploy.sh --init",
+    "dev:iam": "cd iam && npm run dev",
+    "dev:notification": "cd notification && npm run dev",
+    "dev:recommendation": "cd recommendation && npm run dev",
+    "dev:billing": "cd billing && npm run dev",
+    "dev:appeal": "cd appeal-admin && npm run dev"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0"
+  }
+}

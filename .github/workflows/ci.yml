@@ -1,0 +1,269 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ════════════════════════════════════════════════════════════
+  # Job 1: Test
+  # 每次 push 或 PR 都跑，用臨時 PostgreSQL container 測試
+  # ════════════════════════════════════════════════════════════
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres-iam:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: iam_test_db
+          POSTGRES_USER: myuser
+          POSTGRES_PASSWORD: mypassword
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      postgres-notification:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: notification_test_db
+          POSTGRES_USER: myuser
+          POSTGRES_PASSWORD: mypassword
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      postgres-recommendation:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: recommendation_test_db
+          POSTGRES_USER: myuser
+          POSTGRES_PASSWORD: mypassword
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      postgres-billing:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: billing_test_db
+          POSTGRES_USER: myuser
+          POSTGRES_PASSWORD: mypassword
+        ports:
+          - 5436:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      postgres-appeal:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: appeal_admin_test_db
+          POSTGRES_USER: myuser
+          POSTGRES_PASSWORD: mypassword
+        ports:
+          - 5437:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Init test databases
+        run: |
+          sudo apt-get install -y postgresql-client
+          PGPASSWORD=mypassword psql -h localhost -p 5433 -U myuser -d iam_test_db            -f services/iam/schema.sql
+          PGPASSWORD=mypassword psql -h localhost -p 5434 -U myuser -d notification_test_db   -f services/notification/schema.sql
+          PGPASSWORD=mypassword psql -h localhost -p 5435 -U myuser -d recommendation_test_db -f services/recommendation/schema.sql
+          PGPASSWORD=mypassword psql -h localhost -p 5436 -U myuser -d billing_test_db        -f services/billing/schema.sql
+          PGPASSWORD=mypassword psql -h localhost -p 5437 -U myuser -d appeal_admin_test_db   -f services/appeal-admin/schema.sql
+
+      - name: Test IAM
+        working-directory: services/iam
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5433
+          DB_NAME: iam_test_db
+          DB_USER: myuser
+          DB_PASSWORD: mypassword
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          SMTP_HOST: smtp.example.com
+          SMTP_PORT: 587
+          SMTP_USER: test@example.com
+          SMTP_PASS: fakepassword
+          EMAIL_FROM: test@example.com
+          FRONTEND_URL: http://localhost:3001
+        run: npm install && npm test
+
+      - name: Test Notification
+        working-directory: services/notification
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5434
+          DB_NAME: notification_test_db
+          DB_USER: myuser
+          DB_PASSWORD: mypassword
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: npm install && npm test
+
+      - name: Test Recommendation
+        working-directory: services/recommendation
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5435
+          DB_NAME: recommendation_test_db
+          DB_USER: myuser
+          DB_PASSWORD: mypassword
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          IAM_SERVICE_URL: http://localhost:3001
+          ORDER_SERVICE_URL: http://localhost:3006
+          MENU_SERVICE_URL: http://localhost:3007
+          INTERNAL_ADMIN_EMAIL: admin@test.com
+          INTERNAL_ADMIN_PASSWORD: fakepassword
+        run: npm install && npm test
+
+      - name: Test Billing
+        working-directory: services/billing
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5436
+          DB_NAME: billing_test_db
+          DB_USER: myuser
+          DB_PASSWORD: mypassword
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          IAM_SERVICE_URL: http://localhost:3001
+          ORDER_SERVICE_URL: http://localhost:3006
+          INTERNAL_ADMIN_EMAIL: admin@test.com
+          INTERNAL_ADMIN_PASSWORD: fakepassword
+        run: npm install && npm test
+
+      - name: Test Appeal-Admin
+        working-directory: services/appeal-admin
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5437
+          DB_NAME: appeal_admin_test_db
+          DB_USER: myuser
+          DB_PASSWORD: mypassword
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: npm install && npm test
+
+  # ════════════════════════════════════════════════════════════
+  # Job 2: Deploy
+  # 只有 push 到 main 且測試全過才執行
+  # ════════════════════════════════════════════════════════════
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      # Step 1: 把所有 Secrets 寫成 .env 傳進 EC2
+      # .env 不進 git，每次部署都從 Secrets 重新產生
+      - name: Write .env to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          RDS_HOST: ${{ secrets.RDS_HOST }}
+          RDS_PASS: ${{ secrets.RDS_PASS }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          INTERNAL_ADMIN_PASSWORD: ${{ secrets.INTERNAL_ADMIN_PASSWORD }}
+          ORDER_SERVICE_URL: ${{ secrets.ORDER_SERVICE_URL }}
+          MENU_SERVICE_URL: ${{ secrets.MENU_SERVICE_URL }}
+          DB_SSL: true
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: JWT_SECRET,DB_PASSWORD,RDS_HOST,RDS_PASS,EC2_HOST,SMTP_USER,SMTP_PASS,EMAIL_FROM,INTERNAL_ADMIN_PASSWORD,ORDER_SERVICE_URL,MENU_SERVICE_URL,DB_SSL
+          script: |
+            mkdir -p ~/.config/ordering
+            cat > ~/.config/ordering/.env << ENVEOF
+            JWT_SECRET=${JWT_SECRET}
+            DB_USER=postgres
+            DB_PASSWORD=${DB_PASSWORD}
+            RDS_HOST=${RDS_HOST}
+            RDS_USER=postgres
+            RDS_PASS=${RDS_PASS}
+            RDS_PORT=5432
+            EC2_HOST=${EC2_HOST}
+            SMTP_HOST=smtp.gmail.com
+            SMTP_PORT=587
+            SMTP_USER=${SMTP_USER}
+            SMTP_PASS=${SMTP_PASS}
+            EMAIL_FROM=${EMAIL_FROM}
+            INTERNAL_ADMIN_EMAIL=admin1@test.com
+            INTERNAL_ADMIN_PASSWORD=${INTERNAL_ADMIN_PASSWORD}
+            ORDER_SERVICE_URL=${ORDER_SERVICE_URL}
+            MENU_SERVICE_URL=${MENU_SERVICE_URL}
+            DB_SSL=true
+            ENVEOF
+
+      # Step 2: 更新程式碼並重啟服務
+      # ~/repo 是 git repo 根目錄，~/services 是 symlink 指向 ~/repo/services
+      - name: Pull & restart services
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: GITHUB_REPOSITORY
+          script: |
+            set -e
+
+            # repo 被刪除時自動重新 clone
+            if [ ! -d ~/repo/.git ]; then
+              rm -rf ~/repo
+              git clone https://github.com/${GITHUB_REPOSITORY}.git ~/repo
+            fi
+
+            # 確保 symlink 正確指向 repo 內的 services/
+            rm -rf ~/services
+            ln -sfn ~/repo/services ~/services
+
+            # 更新程式碼
+            cd ~/repo
+            git pull origin main
+
+            cd ~/services
+
+            # 第一次部署時初始化 DB，之後跳過
+            if [ ! -f ~/.db_initialized ]; then
+              bash scripts/deploy.sh --init
+              touch ~/.db_initialized
+            else
+              bash scripts/deploy.sh
+            fi

@@ -1,0 +1,242 @@
+version: "3.9"
+
+services:
+  # ── Databases ────────────────────────────────────────────────
+  postgres-iam:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: iam_db
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata-iam:/var/lib/postgresql/data
+      - ./iam/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./iam/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d iam_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  postgres-notification:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata-notification:/var/lib/postgresql/data
+      - ./notification/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d notification_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  postgres-recommendation:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: recommendation_db
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata-recommendation:/var/lib/postgresql/data
+      - ./recommendation/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d recommendation_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  postgres-billing:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: billing_db
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata-billing:/var/lib/postgresql/data
+      - ./billing/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d billing_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  postgres-appeal:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: appeal_admin_db
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata-appeal:/var/lib/postgresql/data
+      - ./appeal-admin/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d appeal_admin_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ── Services ─────────────────────────────────────────────────
+  iam:
+    build:
+      context: ./iam
+      dockerfile: Dockerfile
+    image: ordering/iam:latest
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      DB_HOST: postgres-iam
+      DB_PORT: 5432
+      DB_NAME: iam_db
+      DB_USER: myuser
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 24h
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      EMAIL_FROM: ${EMAIL_FROM}
+      FRONTEND_URL: http://iam:3001
+    depends_on:
+      postgres-iam:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  notification:
+    build:
+      context: ./notification
+      dockerfile: Dockerfile
+    image: ordering/notification:latest
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      DB_HOST: postgres-notification
+      DB_PORT: 5432
+      DB_NAME: notification_db
+      DB_USER: myuser
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres-notification:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  recommendation:
+    build:
+      context: ./recommendation
+      dockerfile: Dockerfile
+    image: ordering/recommendation:latest
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      DB_HOST: postgres-recommendation
+      DB_PORT: 5432
+      DB_NAME: recommendation_db
+      DB_USER: myuser
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      IAM_SERVICE_URL: http://iam:3001
+      ORDER_SERVICE_URL: ${ORDER_SERVICE_URL}
+      MENU_SERVICE_URL: ${MENU_SERVICE_URL}
+      INTERNAL_ADMIN_EMAIL: ${INTERNAL_ADMIN_EMAIL}
+      INTERNAL_ADMIN_PASSWORD: ${INTERNAL_ADMIN_PASSWORD}
+    depends_on:
+      postgres-recommendation:
+        condition: service_healthy
+      iam:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  billing:
+    build:
+      context: ./billing
+      dockerfile: Dockerfile
+    image: ordering/billing:latest
+    ports:
+      - "3004:3004"
+    environment:
+      PORT: 3004
+      DB_HOST: postgres-billing
+      DB_PORT: 5432
+      DB_NAME: billing_db
+      DB_USER: myuser
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      IAM_SERVICE_URL: http://iam:3001
+      ORDER_SERVICE_URL: ${ORDER_SERVICE_URL}
+      INTERNAL_ADMIN_EMAIL: ${INTERNAL_ADMIN_EMAIL}
+      INTERNAL_ADMIN_PASSWORD: ${INTERNAL_ADMIN_PASSWORD}
+    depends_on:
+      postgres-billing:
+        condition: service_healthy
+      iam:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  appeal-admin:
+    build:
+      context: ./appeal-admin
+      dockerfile: Dockerfile
+    image: ordering/appeal-admin:latest
+    ports:
+      - "3005:3005"
+    environment:
+      PORT: 3005
+      DB_HOST: postgres-appeal
+      DB_PORT: 5432
+      DB_NAME: appeal_admin_db
+      DB_USER: myuser
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres-appeal:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3005/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  pgdata-iam:
+  pgdata-notification:
+  pgdata-recommendation:
+  pgdata-billing:
+  pgdata-appeal:
