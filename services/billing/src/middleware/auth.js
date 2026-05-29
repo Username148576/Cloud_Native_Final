@@ -1,9 +1,9 @@
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret";
 const authenticate = (req, res, next) => {
-  const userId = req.headers["x-user-id"];
-  const role = req.headers["x-user-role"];
-  const email = req.headers["x-user-email"];
+  const userId = req.headers["X-User-Id"];
+  const role = req.headers["X-User-Role"];
+  const email = req.headers["X-User-Email"];
   if (!userId || !role) {
     return res.status(401).json({ error: "Missing identity headers from Gateway" });
   }

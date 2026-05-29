@@ -12,9 +12,9 @@
 
 const authenticate = (req, res, next) => {
   // 從 Kong 的 post-function 注入的 Header 中讀取資訊
-  const userId = req.headers["x-user-id"];
-  const role = req.headers["x-user-role"];
-  const email = req.headers["x-user-email"];
+  const userId = req.headers["X-User-Id"];
+  const role = req.headers["X-User-Role"];
+  const email = req.headers["X-User-Email"];
 
   // 安全檢查：如果沒有這些 Header，代表請求可能繞過了 Gateway 直連後端
   if (!userId || !role) {
