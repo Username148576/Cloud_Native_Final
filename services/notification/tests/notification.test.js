@@ -4,20 +4,23 @@
  */
 
 process.env.DB_NAME = "notification_test_db";
-process.env.JWT_SECRET = "test_secret";
 process.env.PORT = "3099";
 
 const request = require("supertest");
-const jwt = require("jsonwebtoken");
 const app = require("../src/app");
 const pool = require("../src/db/pool");
 
-// 直接簽假 token，不需要真的打 IAM service
-const makeToken = (userId, role) =>
-  jwt.sign({ userId, role, email: `${role}@test.com` }, "test_secret");
+const adminAuth = {
+  "x-user-id": "1",
+  "x-user-role": "admin",
+  "x-user-email": "admin@test.com"
+};
 
-let adminToken = makeToken(1, "admin");
-let userToken = makeToken(2, "employee");
+const employeeAuth = {
+  "x-user-id": "2",
+  "x-user-role": "employee",
+  "x-user-email": "employee@test.com"
+};
 let createdId = null;
 
 beforeAll(async () => {
@@ -35,7 +38,7 @@ describe("POST /notifications", () => {
   test("admin 可以建立通知", async () => {
     const res = await request(app)
       .post("/notifications")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ user_id: 2, title: "測試通知", content: "內容" });
 
     expect(res.status).toBe(201);
@@ -47,7 +50,7 @@ describe("POST /notifications", () => {
   test("employee 可以建立通知", async () => {
     const res = await request(app)
       .post("/notifications")
-      .set("Authorization", `Bearer ${userToken}`)
+      .set(employeeAuth)
       .send({ user_id: 2, title: "員工通知", content: "內容" });
     expect(res.status).toBe(201);
   });
@@ -55,7 +58,7 @@ describe("POST /notifications", () => {
   test("缺少 title 回傳 400", async () => {
     const res = await request(app)
       .post("/notifications")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ user_id: 2 });
     expect(res.status).toBe(400);
   });
@@ -75,7 +78,7 @@ describe("GET /notifications", () => {
   test("admin 可以取得所有通知", async () => {
     const res = await request(app)
       .get("/notifications")
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBeGreaterThan(0);
@@ -84,7 +87,7 @@ describe("GET /notifications", () => {
   test("非 admin 回傳 403", async () => {
     const res = await request(app)
       .get("/notifications")
-      .set("Authorization", `Bearer ${userToken}`);
+      .set(employeeAuth);
     expect(res.status).toBe(403);
   });
 });
@@ -96,7 +99,7 @@ describe("GET /notifications/user/:userId", () => {
   test("本人可以取得自己的通知", async () => {
     const res = await request(app)
       .get("/notifications/user/2")
-      .set("Authorization", `Bearer ${userToken}`);
+      .set(employeeAuth);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
@@ -104,15 +107,19 @@ describe("GET /notifications/user/:userId", () => {
   test("admin 可以取得任何人的通知", async () => {
     const res = await request(app)
       .get("/notifications/user/2")
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
     expect(res.status).toBe(200);
   });
 
   test("非本人回傳 403", async () => {
-    const otherToken = makeToken(99, "employee");
+    const otherAuth = {
+      "x-user-id": "3",
+      "x-user-role": "employee",
+      "x-user-email": "other@test.com"
+    };
     const res = await request(app)
       .get("/notifications/user/2")
-      .set("Authorization", `Bearer ${otherToken}`);
+      .set(otherAuth);
     expect(res.status).toBe(403);
   });
 });
@@ -124,7 +131,7 @@ describe("PATCH /notifications/user/:userId/read", () => {
   test("本人可以標記全部為已讀", async () => {
     const res = await request(app)
       .patch("/notifications/user/2/read")
-      .set("Authorization", `Bearer ${userToken}`)
+      .set(employeeAuth)
       .send({});
     expect(res.status).toBe(200);
     expect(res.body.updated).toBeGreaterThan(0);
@@ -134,12 +141,12 @@ describe("PATCH /notifications/user/:userId/read", () => {
     // 先建一筆
     const n = await request(app)
       .post("/notifications")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ user_id: 2, title: "新通知" });
 
     const res = await request(app)
       .patch("/notifications/user/2/read")
-      .set("Authorization", `Bearer ${userToken}`)
+      .set(employeeAuth)
       .send({ ids: [n.body.id] });
     expect(res.status).toBe(200);
   });
@@ -152,26 +159,26 @@ describe("DELETE /notifications/:id", () => {
   test("admin 可以刪除通知", async () => {
     const res = await request(app)
       .delete(`/notifications/${createdId}`)
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
     expect(res.status).toBe(200);
   });
 
   test("刪除不存在的通知回傳 404", async () => {
     const res = await request(app)
       .delete("/notifications/9999")
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
     expect(res.status).toBe(404);
   });
 
   test("非 admin 無法刪除，回傳 403", async () => {
     const n = await request(app)
       .post("/notifications")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ user_id: 2, title: "要被刪的" });
 
     const res = await request(app)
       .delete(`/notifications/${n.body.id}`)
-      .set("Authorization", `Bearer ${userToken}`);
+      .set(employeeAuth);
     expect(res.status).toBe(403);
   });
 });

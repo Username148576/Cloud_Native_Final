@@ -6,7 +6,6 @@
  */
 
 process.env.DB_NAME = "billing_test_db";
-process.env.JWT_SECRET = "test_secret";
 process.env.PORT = "3099";
 
 // Mock orderService 避免真的打 Order service
@@ -15,16 +14,21 @@ jest.mock("../src/middleware/orderService", () => ({
 }));
 
 const request = require("supertest");
-const jwt = require("jsonwebtoken");
 const app = require("../src/app");
 const pool = require("../src/db/pool");
 const { getOrdersByVendor } = require("../src/middleware/orderService");
 
-const makeToken = (userId, role) =>
-  jwt.sign({ userId, role, email: `${role}@test.com` }, "test_secret");
+const adminAuth = {
+  "x-user-id": "1",
+  "x-user-role": "admin",
+  "x-user-email": "admin@test.com"
+};
 
-const adminToken = makeToken(1, "admin");
-const vendorToken = makeToken(2, "vendor");
+const vendorAuth = {
+  "x-user-id": "2",
+  "x-user-role": "vendor",
+  "x-user-email": "vendor@test.com"
+};
 
 let createdStatementId = null;
 let createdIncidentId = null;
@@ -51,7 +55,7 @@ describe("POST /billing/statements", () => {
 
     const res = await request(app)
       .post("/billing/statements")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ vendor_id: 2, statement_period: "2024-01" });
 
     expect(res.status).toBe(201);
@@ -68,7 +72,7 @@ describe("POST /billing/statements", () => {
 
     const res = await request(app)
       .post("/billing/statements")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ vendor_id: 2, statement_period: "2024-02" });
 
     expect(res.status).toBe(502);
@@ -77,7 +81,7 @@ describe("POST /billing/statements", () => {
   test("缺少 vendor_id 回傳 400", async () => {
     const res = await request(app)
       .post("/billing/statements")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ statement_period: "2024-01" });
     expect(res.status).toBe(400);
   });
@@ -85,7 +89,7 @@ describe("POST /billing/statements", () => {
   test("非 admin 回傳 403", async () => {
     const res = await request(app)
       .post("/billing/statements")
-      .set("Authorization", `Bearer ${vendorToken}`)
+      .set(vendorAuth)
       .send({ vendor_id: 2, statement_period: "2024-01" });
     expect(res.status).toBe(403);
   });
@@ -95,7 +99,7 @@ describe("GET /billing/statements", () => {
   test("admin 可以取得所有帳單", async () => {
     const res = await request(app)
       .get("/billing/statements")
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
@@ -103,7 +107,7 @@ describe("GET /billing/statements", () => {
   test("非 admin 回傳 403", async () => {
     const res = await request(app)
       .get("/billing/statements")
-      .set("Authorization", `Bearer ${vendorToken}`);
+      .set(vendorAuth);
     expect(res.status).toBe(403);
   });
 });
@@ -112,16 +116,20 @@ describe("GET /billing/statements/user/:userId", () => {
   test("vendor 可以取得自己的帳單", async () => {
     const res = await request(app)
       .get("/billing/statements/user/2")
-      .set("Authorization", `Bearer ${vendorToken}`);
+      .set(vendorAuth);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
 
   test("非本人回傳 403", async () => {
-    const otherToken = makeToken(99, "vendor");
+    const otherAuth = {
+      "x-user-id": "99",
+      "x-user-role": "vendor",
+      "x-user-email": "other@test.com"
+    };
     const res = await request(app)
       .get("/billing/statements/user/2")
-      .set("Authorization", `Bearer ${otherToken}`);
+      .set(otherAuth);
     expect(res.status).toBe(403);
   });
 });
@@ -130,14 +138,14 @@ describe("DELETE /billing/statements/:id", () => {
   test("admin 可以刪除帳單", async () => {
     const res = await request(app)
       .delete(`/billing/statements/${createdStatementId}`)
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
     expect(res.status).toBe(200);
   });
 
   test("刪除不存在的回傳 404", async () => {
     const res = await request(app)
       .delete("/billing/statements/9999")
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
     expect(res.status).toBe(404);
   });
 });
@@ -149,7 +157,7 @@ describe("POST /billing/incidents", () => {
   test("admin 可以建立違規記錄", async () => {
     const res = await request(app)
       .post("/billing/incidents")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ vendor_id: 2, description: "食物品質問題", deducted_points: 10 });
     expect(res.status).toBe(201);
     expect(res.body.deducted_points).toBe(10);
@@ -159,7 +167,7 @@ describe("POST /billing/incidents", () => {
   test("缺少必要欄位回傳 400", async () => {
     const res = await request(app)
       .post("/billing/incidents")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ vendor_id: 2 });
     expect(res.status).toBe(400);
   });
@@ -169,7 +177,7 @@ describe("GET /billing/incidents", () => {
   test("admin 可以取得所有違規記錄", async () => {
     const res = await request(app)
       .get("/billing/incidents")
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
@@ -179,7 +187,7 @@ describe("GET /billing/incidents/user/:userId", () => {
   test("vendor 可以取得自己的違規記錄", async () => {
     const res = await request(app)
       .get("/billing/incidents/user/2")
-      .set("Authorization", `Bearer ${vendorToken}`);
+      .set(vendorAuth);
     expect(res.status).toBe(200);
   });
 });
@@ -188,7 +196,7 @@ describe("PATCH /billing/incidents/:id", () => {
   test("admin 可以更新違規記錄", async () => {
     const res = await request(app)
       .patch(`/billing/incidents/${createdIncidentId}`)
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ deducted_points: 20, description: "更新說明" });
     expect(res.status).toBe(200);
     expect(res.body.deducted_points).toBe(20);
@@ -197,7 +205,7 @@ describe("PATCH /billing/incidents/:id", () => {
   test("不存在的記錄回傳 404", async () => {
     const res = await request(app)
       .patch("/billing/incidents/9999")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ description: "test" });
     expect(res.status).toBe(404);
   });
@@ -207,7 +215,7 @@ describe("DELETE /billing/incidents/:id", () => {
   test("admin 可以刪除違規記錄", async () => {
     const res = await request(app)
       .delete(`/billing/incidents/${createdIncidentId}`)
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
     expect(res.status).toBe(200);
   });
 });
