@@ -39,17 +39,11 @@ services:
             config:
               access:
                 - |
-                  local jwt_token = ngx.ctx.authenticated_jwt_token
-                  if jwt_token and jwt_token.payload then
-                    if jwt_token.payload.userId then
-                      kong.service.request.set_header("X-User-Id", tostring(jwt_token.payload.userId))
-                    end
-                    if jwt_token.payload.email then
-                      kong.service.request.set_header("X-User-Email", jwt_token.payload.email)
-                    end
-                    if jwt_token.payload.role then
-                      kong.service.request.set_header("X-User-Role", jwt_token.payload.role)
-                    end
+                  local jwt = kong.ctx.shared.authenticated_jwt_token
+                  if jwt and jwt.payload then
+                    kong.service.request.set_header("X-User-Id", tostring(jwt.payload.userId))
+                    kong.service.request.set_header("X-User-Role", jwt.payload.role)
+                    kong.service.request.set_header("X-User-Email", jwt.payload.email)
                   end
 
   # ── Notification ─────────────────────────────────────────────
@@ -70,17 +64,11 @@ services:
             config:
               access:
                 - |
-                  local jwt_token = ngx.ctx.authenticated_jwt_token
-                  if jwt_token and jwt_token.payload then
-                    if jwt_token.payload.userId then
-                      kong.service.request.set_header("X-User-Id", tostring(jwt_token.payload.userId))
-                    end
-                    if jwt_token.payload.email then
-                      kong.service.request.set_header("X-User-Email", jwt_token.payload.email)
-                    end
-                    if jwt_token.payload.role then
-                      kong.service.request.set_header("X-User-Role", jwt_token.payload.role)
-                    end
+                  local jwt = kong.ctx.shared.authenticated_jwt_token
+                  if jwt and jwt.payload then
+                    kong.service.request.set_header("X-User-Id", tostring(jwt.payload.userId))
+                    kong.service.request.set_header("X-User-Role", jwt.payload.role)
+                    kong.service.request.set_header("X-User-Email", jwt.payload.email)
                   end
 
   # ── Recommendation ───────────────────────────────────────────
@@ -101,17 +89,11 @@ services:
             config:
               access:
                 - |
-                  local jwt_token = ngx.ctx.authenticated_jwt_token
-                  if jwt_token and jwt_token.payload then
-                    if jwt_token.payload.userId then
-                      kong.service.request.set_header("X-User-Id", tostring(jwt_token.payload.userId))
-                    end
-                    if jwt_token.payload.email then
-                      kong.service.request.set_header("X-User-Email", jwt_token.payload.email)
-                    end
-                    if jwt_token.payload.role then
-                      kong.service.request.set_header("X-User-Role", jwt_token.payload.role)
-                    end
+                  local jwt = kong.ctx.shared.authenticated_jwt_token
+                  if jwt and jwt.payload then
+                    kong.service.request.set_header("X-User-Id", tostring(jwt.payload.userId))
+                    kong.service.request.set_header("X-User-Role", jwt.payload.role)
+                    kong.service.request.set_header("X-User-Email", jwt.payload.email)
                   end
 
   # ── Billing ──────────────────────────────────────────────────
@@ -132,17 +114,11 @@ services:
             config:
               access:
                 - |
-                  local jwt_token = ngx.ctx.authenticated_jwt_token
-                  if jwt_token and jwt_token.payload then
-                    if jwt_token.payload.userId then
-                      kong.service.request.set_header("X-User-Id", tostring(jwt_token.payload.userId))
-                    end
-                    if jwt_token.payload.email then
-                      kong.service.request.set_header("X-User-Email", jwt_token.payload.email)
-                    end
-                    if jwt_token.payload.role then
-                      kong.service.request.set_header("X-User-Role", jwt_token.payload.role)
-                    end
+                  local jwt = kong.ctx.shared.authenticated_jwt_token
+                  if jwt and jwt.payload then
+                    kong.service.request.set_header("X-User-Id", tostring(jwt.payload.userId))
+                    kong.service.request.set_header("X-User-Role", jwt.payload.role)
+                    kong.service.request.set_header("X-User-Email", jwt.payload.email)
                   end
 
   # ── Appeal-Admin ─────────────────────────────────────────────
@@ -163,17 +139,11 @@ services:
             config:
               access:
                 - |
-                  local jwt_token = ngx.ctx.authenticated_jwt_token
-                  if jwt_token and jwt_token.payload then
-                    if jwt_token.payload.userId then
-                      kong.service.request.set_header("X-User-Id", tostring(jwt_token.payload.userId))
-                    end
-                    if jwt_token.payload.email then
-                      kong.service.request.set_header("X-User-Email", jwt_token.payload.email)
-                    end
-                    if jwt_token.payload.role then
-                      kong.service.request.set_header("X-User-Role", jwt_token.payload.role)
-                    end
+                  local jwt = kong.ctx.shared.authenticated_jwt_token
+                  if jwt and jwt.payload then
+                    kong.service.request.set_header("X-User-Id", tostring(jwt.payload.userId))
+                    kong.service.request.set_header("X-User-Role", jwt.payload.role)
+                    kong.service.request.set_header("X-User-Email", jwt.payload.email)
                   end
 
 # ── Consumers & JWT 憑證 ──────────────────────────────────────
