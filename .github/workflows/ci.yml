@@ -267,3 +267,7 @@ jobs:
             else
               bash scripts/deploy.sh
             fi
+
+            # 部署 Kong（注入 JWT_SECRET 後 reload）
+            source ~/.config/ordering/.env
+            bash scripts/deploy-kong.sh
