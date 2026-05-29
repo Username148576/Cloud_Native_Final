@@ -1,21 +1,61 @@
 _format_version: "3.0"
 
 plugins:
+  # 全域 rate limit
   - name: rate-limiting
     config:
       minute: 60
       policy: local
       hide_client_headers: false
 
+  # 全域 CORS：讓 OPTIONS preflight 不被 JWT 擋
+  - name: cors
+    config:
+      origins:
+        - "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Authorization
+        - Content-Type
+        - X-User-Id
+        - X-User-Role
+        - X-User-Email
+      exposed_headers:
+        - X-User-Id
+        - X-User-Role
+        - X-User-Email
+      credentials: true
+      preflight_continue: false
+
 services:
-  - name: iam-service
+  # ── IAM public ───────────────────────────────────────────────
+  - name: iam-public-service
     url: http://127.0.0.1:3001
     routes:
       - name: iam-public-route
         paths:
-          - /iam/auth
-        strip_path: true
+          - /iam/auth/login
+          - /iam/auth/verify-email
+        strip_path: false
+        plugins:
+          - name: pre-function
+            config:
+              access:
+                - |
+                  local path = kong.request.get_path()
+                  local rewritten = path:gsub("^/iam", "", 1)
+                  kong.service.request.set_path(rewritten)
 
+  # ── IAM protected ────────────────────────────────────────────
+  - name: iam-service
+    url: http://127.0.0.1:3001
+    routes:
       - name: iam-protected-route
         paths:
           - /iam
@@ -42,12 +82,15 @@ services:
                   b64 = b64 .. string.rep("=", pad)
                   local decoded = ngx.decode_base64(b64)
                   if not decoded then return end
-                  local ok, payload = pcall(require("cjson").decode, decoded)
-                  if not ok or not payload then return end
-                  if payload.userId  then kong.service.request.set_header("X-User-Id",    tostring(payload.userId))  end
-                  if payload.role    then kong.service.request.set_header("X-User-Role",  payload.role)              end
-                  if payload.email   then kong.service.request.set_header("X-User-Email", payload.email)             end
+                  -- 不用 require("cjson")，直接用 pattern 從 JSON 字串抓值
+                  local userId = decoded:match('"userId"%s*:%s*(%d+)')
+                  local role   = decoded:match('"role"%s*:%s*"([^"]+)"')
+                  local email  = decoded:match('"email"%s*:%s*"([^"]+)"')
+                  if userId then kong.service.request.set_header("X-User-Id",    userId) end
+                  if role   then kong.service.request.set_header("X-User-Role",  role)   end
+                  if email  then kong.service.request.set_header("X-User-Email", email)  end
 
+  # ── Notification ─────────────────────────────────────────────
   - name: notification-service
     url: http://127.0.0.1:3002
     routes:
@@ -77,12 +120,14 @@ services:
                   b64 = b64 .. string.rep("=", pad)
                   local decoded = ngx.decode_base64(b64)
                   if not decoded then return end
-                  local ok, payload = pcall(require("cjson").decode, decoded)
-                  if not ok or not payload then return end
-                  if payload.userId  then kong.service.request.set_header("X-User-Id",    tostring(payload.userId))  end
-                  if payload.role    then kong.service.request.set_header("X-User-Role",  payload.role)              end
-                  if payload.email   then kong.service.request.set_header("X-User-Email", payload.email)             end
+                  local userId = decoded:match('"userId"%s*:%s*(%d+)')
+                  local role   = decoded:match('"role"%s*:%s*"([^"]+)"')
+                  local email  = decoded:match('"email"%s*:%s*"([^"]+)"')
+                  if userId then kong.service.request.set_header("X-User-Id",    userId) end
+                  if role   then kong.service.request.set_header("X-User-Role",  role)   end
+                  if email  then kong.service.request.set_header("X-User-Email", email)  end
 
+  # ── Recommendation ───────────────────────────────────────────
   - name: recommendation-service
     url: http://127.0.0.1:3003
     routes:
@@ -112,12 +157,14 @@ services:
                   b64 = b64 .. string.rep("=", pad)
                   local decoded = ngx.decode_base64(b64)
                   if not decoded then return end
-                  local ok, payload = pcall(require("cjson").decode, decoded)
-                  if not ok or not payload then return end
-                  if payload.userId  then kong.service.request.set_header("X-User-Id",    tostring(payload.userId))  end
-                  if payload.role    then kong.service.request.set_header("X-User-Role",  payload.role)              end
-                  if payload.email   then kong.service.request.set_header("X-User-Email", payload.email)             end
+                  local userId = decoded:match('"userId"%s*:%s*(%d+)')
+                  local role   = decoded:match('"role"%s*:%s*"([^"]+)"')
+                  local email  = decoded:match('"email"%s*:%s*"([^"]+)"')
+                  if userId then kong.service.request.set_header("X-User-Id",    userId) end
+                  if role   then kong.service.request.set_header("X-User-Role",  role)   end
+                  if email  then kong.service.request.set_header("X-User-Email", email)  end
 
+  # ── Billing ──────────────────────────────────────────────────
   - name: billing-service
     url: http://127.0.0.1:3004
     routes:
@@ -147,12 +194,14 @@ services:
                   b64 = b64 .. string.rep("=", pad)
                   local decoded = ngx.decode_base64(b64)
                   if not decoded then return end
-                  local ok, payload = pcall(require("cjson").decode, decoded)
-                  if not ok or not payload then return end
-                  if payload.userId  then kong.service.request.set_header("X-User-Id",    tostring(payload.userId))  end
-                  if payload.role    then kong.service.request.set_header("X-User-Role",  payload.role)              end
-                  if payload.email   then kong.service.request.set_header("X-User-Email", payload.email)             end
+                  local userId = decoded:match('"userId"%s*:%s*(%d+)')
+                  local role   = decoded:match('"role"%s*:%s*"([^"]+)"')
+                  local email  = decoded:match('"email"%s*:%s*"([^"]+)"')
+                  if userId then kong.service.request.set_header("X-User-Id",    userId) end
+                  if role   then kong.service.request.set_header("X-User-Role",  role)   end
+                  if email  then kong.service.request.set_header("X-User-Email", email)  end
 
+  # ── Appeal-Admin ─────────────────────────────────────────────
   - name: appeal-admin-service
     url: http://127.0.0.1:3005
     routes:
@@ -182,11 +231,12 @@ services:
                   b64 = b64 .. string.rep("=", pad)
                   local decoded = ngx.decode_base64(b64)
                   if not decoded then return end
-                  local ok, payload = pcall(require("cjson").decode, decoded)
-                  if not ok or not payload then return end
-                  if payload.userId  then kong.service.request.set_header("X-User-Id",    tostring(payload.userId))  end
-                  if payload.role    then kong.service.request.set_header("X-User-Role",  payload.role)              end
-                  if payload.email   then kong.service.request.set_header("X-User-Email", payload.email)             end
+                  local userId = decoded:match('"userId"%s*:%s*(%d+)')
+                  local role   = decoded:match('"role"%s*:%s*"([^"]+)"')
+                  local email  = decoded:match('"email"%s*:%s*"([^"]+)"')
+                  if userId then kong.service.request.set_header("X-User-Id",    userId) end
+                  if role   then kong.service.request.set_header("X-User-Role",  role)   end
+                  if email  then kong.service.request.set_header("X-User-Email", email)  end
 
 consumers:
   - username: iam-issued
