@@ -10,9 +10,7 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-KONG_DIR="$PROJECT_DIR/kong"
+KONG_DIR="$HOME/kong"
 RENDERED="$KONG_DIR/kong.rendered.yml"
 ENV_FILE="$HOME/.config/ordering/.env"
 if [ -f "$ENV_FILE" ]; then
