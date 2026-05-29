@@ -1,50 +1,51 @@
 _format_version: "3.0"
 
 # ── 全域 Plugin ───────────────────────────────────────────────
-# 套用在所有 route 上
 plugins:
-  # IP Rate Limit：每個 IP 每分鐘最多 60 次請求
   - name: rate-limiting
     config:
       minute: 60
-      policy: local          # local = 不需要 Redis，單機 Kong 用這個
+      policy: local
       hide_client_headers: false
 
 # ── Services & Routes ─────────────────────────────────────────
 services:
   # ── IAM ─────────────────────────────────────────────────────
-  # /iam/auth/login 和 /iam/auth/verify-email 不需要 JWT（登入本身就是拿 token 的地方）
-  # 其他 /iam/** 需要 JWT
   - name: iam-service
     url: http://127.0.0.1:3001
     routes:
-      # 公開路由：登入、email 驗證
       - name: iam-public-route
         paths:
           - /iam/auth
-        strip_path: true       # /iam/auth/login → /auth/login 送到後端
+        strip_path: true
 
-      # 需要 JWT 的路由
       - name: iam-protected-route
         paths:
           - /iam
-        strip_path: true       # /iam/users/1 → /users/1
+        strip_path: true
         plugins:
           - name: jwt
             config:
               secret_is_base64: false
-              key_claim_name: iss  # token payload 裡用 iss 欄位對應 consumer key
-
-          - name: post-function
+              key_claim_name: iss
+          - name: pre-function
             config:
               access:
                 - |
-                  local jwt = kong.ctx.shared.authenticated_jwt_token
-                  if jwt and jwt.payload then
-                    kong.service.request.set_header("X-User-Id", tostring(jwt.payload.userId))
-                    kong.service.request.set_header("X-User-Role", jwt.payload.role)
-                    kong.service.request.set_header("X-User-Email", jwt.payload.email)
-                  end
+                  local auth = kong.request.get_header("Authorization")
+                  if not auth then return end
+                  local payload_b64 = auth:match("^Bearer [^.]+%.([^.]+)%.")
+                  if not payload_b64 then return end
+                  local b64 = payload_b64:gsub("-", "+"):gsub("_", "/")
+                  local pad = (4 - #b64 % 4) % 4
+                  b64 = b64 .. string.rep("=", pad)
+                  local decoded = ngx.decode_base64(b64)
+                  if not decoded then return end
+                  local ok, payload = pcall(require("cjson").decode, decoded)
+                  if not ok or not payload then return end
+                  if payload.userId  then kong.service.request.set_header("X-User-Id",    tostring(payload.userId))  end
+                  if payload.role    then kong.service.request.set_header("X-User-Role",  payload.role)              end
+                  if payload.email   then kong.service.request.set_header("X-User-Email", payload.email)             end
 
   # ── Notification ─────────────────────────────────────────────
   - name: notification-service
@@ -53,23 +54,30 @@ services:
       - name: notification-route
         paths:
           - /notification
-        strip_path: true       # /notification/notifications/... → /notifications/...
+        strip_path: true
         plugins:
           - name: jwt
             config:
               secret_is_base64: false
               key_claim_name: iss
-
-          - name: post-function
+          - name: pre-function
             config:
               access:
                 - |
-                  local jwt = kong.ctx.shared.authenticated_jwt_token
-                  if jwt and jwt.payload then
-                    kong.service.request.set_header("X-User-Id", tostring(jwt.payload.userId))
-                    kong.service.request.set_header("X-User-Role", jwt.payload.role)
-                    kong.service.request.set_header("X-User-Email", jwt.payload.email)
-                  end
+                  local auth = kong.request.get_header("Authorization")
+                  if not auth then return end
+                  local payload_b64 = auth:match("^Bearer [^.]+%.([^.]+)%.")
+                  if not payload_b64 then return end
+                  local b64 = payload_b64:gsub("-", "+"):gsub("_", "/")
+                  local pad = (4 - #b64 % 4) % 4
+                  b64 = b64 .. string.rep("=", pad)
+                  local decoded = ngx.decode_base64(b64)
+                  if not decoded then return end
+                  local ok, payload = pcall(require("cjson").decode, decoded)
+                  if not ok or not payload then return end
+                  if payload.userId  then kong.service.request.set_header("X-User-Id",    tostring(payload.userId))  end
+                  if payload.role    then kong.service.request.set_header("X-User-Role",  payload.role)              end
+                  if payload.email   then kong.service.request.set_header("X-User-Email", payload.email)             end
 
   # ── Recommendation ───────────────────────────────────────────
   - name: recommendation-service
@@ -84,17 +92,24 @@ services:
             config:
               secret_is_base64: false
               key_claim_name: iss
-
-          - name: post-function
+          - name: pre-function
             config:
               access:
                 - |
-                  local jwt = kong.ctx.shared.authenticated_jwt_token
-                  if jwt and jwt.payload then
-                    kong.service.request.set_header("X-User-Id", tostring(jwt.payload.userId))
-                    kong.service.request.set_header("X-User-Role", jwt.payload.role)
-                    kong.service.request.set_header("X-User-Email", jwt.payload.email)
-                  end
+                  local auth = kong.request.get_header("Authorization")
+                  if not auth then return end
+                  local payload_b64 = auth:match("^Bearer [^.]+%.([^.]+)%.")
+                  if not payload_b64 then return end
+                  local b64 = payload_b64:gsub("-", "+"):gsub("_", "/")
+                  local pad = (4 - #b64 % 4) % 4
+                  b64 = b64 .. string.rep("=", pad)
+                  local decoded = ngx.decode_base64(b64)
+                  if not decoded then return end
+                  local ok, payload = pcall(require("cjson").decode, decoded)
+                  if not ok or not payload then return end
+                  if payload.userId  then kong.service.request.set_header("X-User-Id",    tostring(payload.userId))  end
+                  if payload.role    then kong.service.request.set_header("X-User-Role",  payload.role)              end
+                  if payload.email   then kong.service.request.set_header("X-User-Email", payload.email)             end
 
   # ── Billing ──────────────────────────────────────────────────
   - name: billing-service
@@ -109,17 +124,24 @@ services:
             config:
               secret_is_base64: false
               key_claim_name: iss
-
-          - name: post-function
+          - name: pre-function
             config:
               access:
                 - |
-                  local jwt = kong.ctx.shared.authenticated_jwt_token
-                  if jwt and jwt.payload then
-                    kong.service.request.set_header("X-User-Id", tostring(jwt.payload.userId))
-                    kong.service.request.set_header("X-User-Role", jwt.payload.role)
-                    kong.service.request.set_header("X-User-Email", jwt.payload.email)
-                  end
+                  local auth = kong.request.get_header("Authorization")
+                  if not auth then return end
+                  local payload_b64 = auth:match("^Bearer [^.]+%.([^.]+)%.")
+                  if not payload_b64 then return end
+                  local b64 = payload_b64:gsub("-", "+"):gsub("_", "/")
+                  local pad = (4 - #b64 % 4) % 4
+                  b64 = b64 .. string.rep("=", pad)
+                  local decoded = ngx.decode_base64(b64)
+                  if not decoded then return end
+                  local ok, payload = pcall(require("cjson").decode, decoded)
+                  if not ok or not payload then return end
+                  if payload.userId  then kong.service.request.set_header("X-User-Id",    tostring(payload.userId))  end
+                  if payload.role    then kong.service.request.set_header("X-User-Role",  payload.role)              end
+                  if payload.email   then kong.service.request.set_header("X-User-Email", payload.email)             end
 
   # ── Appeal-Admin ─────────────────────────────────────────────
   - name: appeal-admin-service
@@ -134,27 +156,29 @@ services:
             config:
               secret_is_base64: false
               key_claim_name: iss
-
-          - name: post-function
+          - name: pre-function
             config:
               access:
                 - |
-                  local jwt = kong.ctx.shared.authenticated_jwt_token
-                  if jwt and jwt.payload then
-                    kong.service.request.set_header("X-User-Id", tostring(jwt.payload.userId))
-                    kong.service.request.set_header("X-User-Role", jwt.payload.role)
-                    kong.service.request.set_header("X-User-Email", jwt.payload.email)
-                  end
+                  local auth = kong.request.get_header("Authorization")
+                  if not auth then return end
+                  local payload_b64 = auth:match("^Bearer [^.]+%.([^.]+)%.")
+                  if not payload_b64 then return end
+                  local b64 = payload_b64:gsub("-", "+"):gsub("_", "/")
+                  local pad = (4 - #b64 % 4) % 4
+                  b64 = b64 .. string.rep("=", pad)
+                  local decoded = ngx.decode_base64(b64)
+                  if not decoded then return end
+                  local ok, payload = pcall(require("cjson").decode, decoded)
+                  if not ok or not payload then return end
+                  if payload.userId  then kong.service.request.set_header("X-User-Id",    tostring(payload.userId))  end
+                  if payload.role    then kong.service.request.set_header("X-User-Role",  payload.role)              end
+                  if payload.email   then kong.service.request.set_header("X-User-Email", payload.email)             end
 
 # ── Consumers & JWT 憑證 ──────────────────────────────────────
-# Kong 的 JWT plugin 需要一個 consumer 對應一組 key/secret
-# key   → 放在 JWT payload 的 iss 欄位
-# secret → 用來簽 JWT（必須跟 IAM service 的 JWT_SECRET 一致）
-#
-# 這裡建立一個代表「所有由 IAM service 簽發的 token」的 consumer
 consumers:
   - username: iam-issued
     jwt_secrets:
-      - key: ordering-system          # iss claim 的值，IAM 簽 token 時要帶這個
-        secret: "${JWT_SECRET}"       # 對應 IAM service 的 JWT_SECRET 環境變數
+      - key: ordering-system
+        secret: "${JWT_SECRET}"
         algorithm: HS256
