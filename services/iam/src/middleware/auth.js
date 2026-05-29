@@ -13,6 +13,7 @@
 const authenticate = (req, res, next) => {
   // 從 Kong 的 post-function 注入的 Header 中讀取資訊
   // Express/Node 會將 header key 轉成小寫，因此要用不區分大小寫的方式讀取
+  console.log("=== 收到請求的 Headers ===", req.headers);
   const userId = req.get("X-User-Id");
   const role = req.get("X-User-Role");
   const email = req.get("X-User-Email");
