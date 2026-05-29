@@ -26,14 +26,14 @@ echo "→ 產生 kong.rendered.yml..."
 sed "s|\${JWT_SECRET}|$JWT_SECRET|g" "$KONG_DIR/kong.yml" > "$RENDERED"
 
 # 如果 Kong 已在跑，reload；否則第一次啟動
-if docker ps --format '{{.Names}}' | grep -q '^kong$'; then
+if sudo docker ps --format '{{.Names}}' | grep -q '^kong$'; then
   echo "→ Kong 已在執行，執行 reload..."
-  docker cp "$RENDERED" kong:/kong.rendered.yml
-  docker exec kong kong reload
+  sudo docker cp "$RENDERED" kong:/kong.rendered.yml
+  sudo docker exec kong kong reload
   echo "✅ Kong reload 完成"
 else
   echo "→ 啟動 Kong..."
-  docker run -d \
+  sudo docker run -d \
     --name kong \
     --network host \
     -v "$RENDERED:/kong.yml" \
@@ -57,6 +57,6 @@ if [ "$STATUS" = "200" ]; then
   echo "   Proxy:     http://localhost:8000"
 else
   echo "❌ Kong 健康檢查失敗（HTTP $STATUS），請查看 log："
-  echo "   docker logs kong"
+  echo "   sudo docker logs kong"
   exit 1
 fi
