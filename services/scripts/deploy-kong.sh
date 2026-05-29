@@ -14,11 +14,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 KONG_DIR="$PROJECT_DIR/kong"
 RENDERED="$KONG_DIR/kong.rendered.yml"
-
-if [ -z "$JWT_SECRET" ]; then
-  echo "❌ JWT_SECRET 環境變數未設定"
+ENV_FILE="$HOME/.config/ordering/.env"
+if [ -f "$ENV_FILE" ]; then
+  export $(grep -v '^#' "$ENV_FILE" | xargs)
+else
+  echo "❌ 找不到 .env 檔案：$ENV_FILE"
   exit 1
 fi
+
+JWT_SECRET="${JWT_SECRET:?請在 .env 設定 JWT_SECRET}"
 
 echo "→ 產生 kong.rendered.yml..."
 sed "s|\${JWT_SECRET}|$JWT_SECRET|g" "$KONG_DIR/kong.yml" > "$RENDERED"
