@@ -10,25 +10,25 @@
  * 所有微服務複製這個檔案就能用，只需要有相同的 JWT_SECRET。
  */
 
-const jwt = require("jsonwebtoken");
-
-const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret";
-
-// ── 1. 驗證 token 是否有效 ────────────────────────────────────
 const authenticate = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Missing or invalid token" });
+  // 從 Kong 的 post-function 注入的 Header 中讀取資訊
+  const userId = req.headers["x-user-id"];
+  const role = req.headers["x-user-role"];
+  const email = req.headers["x-user-email"];
+
+  // 安全檢查：如果沒有這些 Header，代表請求可能繞過了 Gateway 直連後端
+  if (!userId || !role) {
+    return res.status(401).json({ error: "Missing identity headers from Gateway" });
   }
 
-  const token = authHeader.split(" ")[1];
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // { userId, role, email }
-    next();
-  } catch (err) {
-    return res.status(401).json({ error: "Token expired or invalid" });
-  }
+  // 將資料掛載到 req.user，讓後續的 authorize 和 requireSelf 繼續運作
+  req.user = {
+    userId: parseInt(userId, 10), // 注意：Header 傳過來的是字串，記得轉型
+    role: role,
+    email: email
+  };
+  
+  next();
 };
 
 // ── 2. 角色授權 ───────────────────────────────────────────────

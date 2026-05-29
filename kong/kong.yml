@@ -35,6 +35,23 @@ services:
               secret_is_base64: false
               key_claim_name: iss  # token payload 裡用 iss 欄位對應 consumer key
 
+          - name: post-function
+            config:
+              access:
+                - |
+                  local jwt_token = ngx.ctx.authenticated_jwt_token
+                  if jwt_token and jwt_token.payload then
+                    if jwt_token.payload.userId then
+                      kong.service.request.set_header("X-User-Id", tostring(jwt_token.payload.userId))
+                    end
+                    if jwt_token.payload.email then
+                      kong.service.request.set_header("X-User-Email", jwt_token.payload.email)
+                    end
+                    if jwt_token.payload.role then
+                      kong.service.request.set_header("X-User-Role", jwt_token.payload.role)
+                    end
+                  end
+
   # ── Notification ─────────────────────────────────────────────
   - name: notification-service
     url: http://127.0.0.1:3002
@@ -48,6 +65,23 @@ services:
             config:
               secret_is_base64: false
               key_claim_name: iss
+
+          - name: post-function
+            config:
+              access:
+                - |
+                  local jwt_token = ngx.ctx.authenticated_jwt_token
+                  if jwt_token and jwt_token.payload then
+                    if jwt_token.payload.userId then
+                      kong.service.request.set_header("X-User-Id", tostring(jwt_token.payload.userId))
+                    end
+                    if jwt_token.payload.email then
+                      kong.service.request.set_header("X-User-Email", jwt_token.payload.email)
+                    end
+                    if jwt_token.payload.role then
+                      kong.service.request.set_header("X-User-Role", jwt_token.payload.role)
+                    end
+                  end
 
   # ── Recommendation ───────────────────────────────────────────
   - name: recommendation-service
@@ -63,6 +97,23 @@ services:
               secret_is_base64: false
               key_claim_name: iss
 
+          - name: post-function
+            config:
+              access:
+                - |
+                  local jwt_token = ngx.ctx.authenticated_jwt_token
+                  if jwt_token and jwt_token.payload then
+                    if jwt_token.payload.userId then
+                      kong.service.request.set_header("X-User-Id", tostring(jwt_token.payload.userId))
+                    end
+                    if jwt_token.payload.email then
+                      kong.service.request.set_header("X-User-Email", jwt_token.payload.email)
+                    end
+                    if jwt_token.payload.role then
+                      kong.service.request.set_header("X-User-Role", jwt_token.payload.role)
+                    end
+                  end
+
   # ── Billing ──────────────────────────────────────────────────
   - name: billing-service
     url: http://127.0.0.1:3004
@@ -77,6 +128,23 @@ services:
               secret_is_base64: false
               key_claim_name: iss
 
+          - name: post-function
+            config:
+              access:
+                - |
+                  local jwt_token = ngx.ctx.authenticated_jwt_token
+                  if jwt_token and jwt_token.payload then
+                    if jwt_token.payload.userId then
+                      kong.service.request.set_header("X-User-Id", tostring(jwt_token.payload.userId))
+                    end
+                    if jwt_token.payload.email then
+                      kong.service.request.set_header("X-User-Email", jwt_token.payload.email)
+                    end
+                    if jwt_token.payload.role then
+                      kong.service.request.set_header("X-User-Role", jwt_token.payload.role)
+                    end
+                  end
+
   # ── Appeal-Admin ─────────────────────────────────────────────
   - name: appeal-admin-service
     url: http://127.0.0.1:3005
@@ -90,6 +158,23 @@ services:
             config:
               secret_is_base64: false
               key_claim_name: iss
+
+          - name: post-function
+            config:
+              access:
+                - |
+                  local jwt_token = ngx.ctx.authenticated_jwt_token
+                  if jwt_token and jwt_token.payload then
+                    if jwt_token.payload.userId then
+                      kong.service.request.set_header("X-User-Id", tostring(jwt_token.payload.userId))
+                    end
+                    if jwt_token.payload.email then
+                      kong.service.request.set_header("X-User-Email", jwt_token.payload.email)
+                    end
+                    if jwt_token.payload.role then
+                      kong.service.request.set_header("X-User-Role", jwt_token.payload.role)
+                    end
+                  end
 
 # ── Consumers & JWT 憑證 ──────────────────────────────────────
 # Kong 的 JWT plugin 需要一個 consumer 對應一組 key/secret

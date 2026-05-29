@@ -50,7 +50,7 @@ module.exports = {
         SMTP_USER: process.env.SMTP_USER,
         SMTP_PASS: process.env.SMTP_PASS,
         EMAIL_FROM: process.env.EMAIL_FROM,
-        FRONTEND_URL: `http://${process.env.EC2_HOST || "localhost"}:3001`,
+        FRONTEND_URL: `http://${process.env.EC2_HOST || "localhost"}:8000/iam`,
       },
     },
     {

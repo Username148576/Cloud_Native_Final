@@ -1,20 +1,19 @@
 // 與 IAM service 的 auth.js 完全相同
 // 複製到每個微服務，只需共享 JWT_SECRET 環境變數
 
-const jwt = require("jsonwebtoken");
-const JWT_SECRET = process.env.JWT_SECRET || "change_this_secret";
-
 const authenticate = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer "))
-    return res.status(401).json({ error: "Missing or invalid token" });
-
-  try {
-    req.user = jwt.verify(authHeader.split(" ")[1], JWT_SECRET);
-    next();
-  } catch {
-    return res.status(401).json({ error: "Token expired or invalid" });
+  const userId = req.headers["x-user-id"];
+  const role = req.headers["x-user-role"];
+  const email = req.headers["x-user-email"];
+  if (!userId || !role) {
+    return res.status(401).json({ error: "Missing identity headers from Gateway" });
   }
+  req.user = {
+    userId: parseInt(userId, 10), // 注意：Header 傳過來的是字串，記得轉型
+    role: role,
+    email: email
+  };
+  next();
 };
 
 const authorize = (...roles) => (req, res, next) => {
