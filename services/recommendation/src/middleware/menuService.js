@@ -40,7 +40,7 @@ const getTodayMenus = async () => {
   const token = await getAdminToken();
   const today = new Date().toISOString().split("T")[0]; // "2024-01-15"
 
-  const url = new URL(`${process.env.MENU_SERVICE_URL}/menus`);
+  const url = new URL(`${process.env.MENU_SERVICE_URL}/api/v1/menus`);
   const res = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${token}` },
   });
