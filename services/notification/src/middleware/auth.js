@@ -2,9 +2,9 @@
 // 複製到每個微服務，只需共享 JWT_SECRET 環境變數
 
 const authenticate = (req, res, next) => {
-  const userId = req.headers["X-User-Id"];
-  const role = req.headers["X-User-Role"];
-  const email = req.headers["X-User-Email"];
+  const userId = req.get("X-User-Id");
+  const role = req.get("X-User-Role");
+  const email = req.get("X-User-Email");
   if (!userId || !role) {
     return res.status(401).json({ error: "Missing identity headers from Gateway" });
   }
