@@ -19,15 +19,15 @@ const pool = require("../src/db/pool");
 const { getOrdersByVendor } = require("../src/middleware/orderService");
 
 const adminAuth = {
-  "x-user-id": "1",
-  "x-user-role": "admin",
-  "x-user-email": "admin@test.com"
+  "X-User-Id": "1",
+  "X-User-Role": "admin",
+  "X-User-Email": "admin@test.com"
 };
 
 const vendorAuth = {
-  "x-user-id": "2",
-  "x-user-role": "vendor",
-  "x-user-email": "vendor@test.com"
+  "X-User-Id": "2",
+  "X-User-Role": "vendor",
+  "X-User-Email": "vendor@test.com"
 };
 
 let createdStatementId = null;
@@ -123,9 +123,9 @@ describe("GET /billing/statements/user/:userId", () => {
 
   test("非本人回傳 403", async () => {
     const otherAuth = {
-      "x-user-id": "99",
-      "x-user-role": "vendor",
-      "x-user-email": "other@test.com"
+      "X-User-Id": "99",
+      "X-User-Role": "vendor",
+      "X-User-Email": "other@test.com"
     };
     const res = await request(app)
       .get("/billing/statements/user/2")

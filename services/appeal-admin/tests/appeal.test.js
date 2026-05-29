@@ -11,21 +11,21 @@ const app = require("../src/app");
 const pool = require("../src/db/pool");
 
 const employeeAuth = {
-  "x-user-id": "2",
-  "x-user-role": "employee",
-  "x-user-email": "employee@test.com"
+  "X-User-Id": "2",
+  "X-User-Role": "employee",
+  "X-User-Email": "employee@test.com"
 };
 
 const vendorAuth = {
-  "x-user-id": "3",
-  "x-user-role": "vendor",
-  "x-user-email": "vendor@test.com"
+  "X-User-Id": "3",
+  "X-User-Role": "vendor",
+  "X-User-Email": "vendor@test.com"
 };
 
 const adminAuth = {
-  "x-user-id": "1",
-  "x-user-role": "admin",
-  "x-user-email": "admin@test.com"
+  "X-User-Id": "1",
+  "X-User-Role": "admin",
+  "X-User-Email": "admin@test.com"
 };
 
 let createdId = null;
@@ -127,9 +127,9 @@ describe("GET /appeals/user/:userId", () => {
 
   test("非本人回傳 403", async () => {
     const otherAuth = {
-      "x-user-id": "99",
-      "x-user-role": "employee",
-      "x-user-email": "other@test.com"
+      "X-User-Id": "99",
+      "X-User-Role": "employee",
+      "X-User-Email": "other@test.com"
     };
     const res = await request(app)
       .get("/appeals/user/2")

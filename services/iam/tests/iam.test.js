@@ -11,15 +11,15 @@ const pool = require("../src/db/pool");
 
 // 💡 移除 token 變數，改用「模擬 Kong 注入的 Header」
 const adminAuth = {
-  "x-user-id": "1",
-  "x-user-role": "admin",
-  "x-user-email": "admin@test.com"
+  "X-User-Id": "1",
+  "X-User-Role": "admin",
+  "X-User-Email": "admin@test.com"
 };
 
 const employeeAuth = {
-  "x-user-id": "2",
-  "x-user-role": "employee",
-  "x-user-email": "employee@test.com"
+  "X-User-Id": "2",
+  "X-User-Role": "employee",
+  "X-User-Email": "employee@test.com"
 };
 
 let createdUserId = null;
