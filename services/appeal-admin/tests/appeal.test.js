@@ -31,13 +31,23 @@ jest.mock("../src/middleware/vendorService", () => ({
 const { getOrderById }      = require("../src/middleware/orderService");
 const { addViolationPoint } = require("../src/middleware/vendorService");
 
-// ── Token helpers ────────────────────────────────────────────
-const makeToken = (userId, role) =>
-  jwt.sign({ iss: "ordering-system", userId, role, email: `${role}@test.com` }, "test_secret");
+const adminAuth = {
+  "X-User-Id": "1",
+  "X-User-Role": "admin",
+  "X-User-Email": "admin@test.com"
+};
 
-const adminToken  = makeToken(1, "admin");
-const empToken    = makeToken(2, "employee");
-const vendorToken = makeToken(3, "vendor");
+const vendorAuth = {
+  "X-User-Id": "2",
+  "X-User-Role": "vendor",
+  "X-User-Email": "vendor@test.com"
+};
+
+const empToken = {
+  "X-User-Id": "3",
+  "X-User-Role": "employee",
+  "X-User-Email": "employee@test.com"
+};
 
 // ── 假訂單資料 ───────────────────────────────────────────────
 const fakeOrder = { id: 1, employee_id: 2, vendor_id: 10 };
@@ -68,7 +78,7 @@ describe("POST /appeals", () => {
   test("admin 可以建立 appeal，employee_id 和 vendor_id 從 Order service 自動帶入", async () => {
     const res = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ order_id: 1, reason: "餐點有問題" });
 
     expect(res.status).toBe(201);
@@ -84,7 +94,7 @@ describe("POST /appeals", () => {
     // order 的 employee_id 是 2，empToken 的 userId 也是 2
     const res = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${empToken}`)
+      .set(empToken)
       .send({ order_id: 1, reason: "我要申訴" });
 
     expect(res.status).toBe(201);
@@ -93,12 +103,16 @@ describe("POST /appeals", () => {
 
   test("employee 不能對別人的訂單申訴，回傳 403", async () => {
     // order 的 employee_id 是 2，但 token 是 userId 99
-    getOrderById.mockResolvedValue({ id: 1, employee_id: 2, vendor_id: 10 });
-    const otherEmpToken = makeToken(99, "employee");
+    getOrderById.mockResolvedValue({ oid: 1, employee_id: 2, vendor_id: 10 });
+    const otherEmpToken = {
+      "X-User-Id": "99",
+      "X-User-Role": "employee",
+      "X-User-Email": "employee99@test.com"
+    };
 
     const res = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${otherEmpToken}`)
+      .set(otherEmpToken)
       .send({ order_id: 1, reason: "試圖申訴別人的單" });
 
     expect(res.status).toBe(403);
@@ -107,7 +121,7 @@ describe("POST /appeals", () => {
   test("vendor 無法建立 appeal，回傳 403", async () => {
     const res = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${vendorToken}`)
+      .set(vendorAuth)
       .send({ order_id: 1, reason: "vendor 申訴" });
 
     expect(res.status).toBe(403);
@@ -116,7 +130,7 @@ describe("POST /appeals", () => {
   test("缺少 reason 回傳 400，不會呼叫 Order service", async () => {
     const res = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ order_id: 1 });
 
     expect(res.status).toBe(400);
@@ -126,7 +140,7 @@ describe("POST /appeals", () => {
   test("缺少 order_id 回傳 400", async () => {
     const res = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ reason: "沒有 order_id" });
 
     expect(res.status).toBe(400);
@@ -137,7 +151,7 @@ describe("POST /appeals", () => {
 
     const res = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ order_id: 99, reason: "找不到的單" });
 
     expect(res.status).toBe(404);
@@ -148,7 +162,7 @@ describe("POST /appeals", () => {
 
     const res = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ order_id: 1, reason: "order service 掛了" });
 
     expect(res.status).toBe(502);
@@ -159,7 +173,7 @@ describe("POST /appeals", () => {
 
     const res = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ order_id: 5, reason: "沒有廠商的單" });
 
     expect(res.status).toBe(201);
@@ -175,7 +189,7 @@ describe("GET /appeals", () => {
   test("admin 可以取得所有 appeals", async () => {
     const res = await request(app)
       .get("/appeals")
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -185,7 +199,7 @@ describe("GET /appeals", () => {
   test("非 admin 回傳 403", async () => {
     const res = await request(app)
       .get("/appeals")
-      .set("Authorization", `Bearer ${empToken}`);
+      .set(empToken);
 
     expect(res.status).toBe(403);
   });
@@ -198,7 +212,7 @@ describe("GET /appeals/user/:userId", () => {
   test("本人可以取得自己的 appeals", async () => {
     const res = await request(app)
       .get("/appeals/user/2")
-      .set("Authorization", `Bearer ${empToken}`);
+      .set(empToken);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -207,16 +221,20 @@ describe("GET /appeals/user/:userId", () => {
   test("admin 可以取得任何人的 appeals", async () => {
     const res = await request(app)
       .get("/appeals/user/2")
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
 
     expect(res.status).toBe(200);
   });
 
   test("非本人回傳 403", async () => {
-    const otherToken = makeToken(99, "employee");
+    const otherToken = {
+      "X-User-Id": "99",
+      "X-User-Role": "employee",
+      "X-User-Email": "employee99@test.com"
+    };
     const res = await request(app)
       .get("/appeals/user/2")
-      .set("Authorization", `Bearer ${otherToken}`);
+      .set(otherToken);
 
     expect(res.status).toBe(403);
   });
@@ -229,7 +247,7 @@ describe("PATCH /appeals/:id", () => {
   test("admin 可以審核 appeal（approved），同時呼叫 violation-points", async () => {
     const res = await request(app)
       .patch(`/appeals/${createdId}`)
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ status: "approved", refund_amount: 150, admin_notes: "確認退款" });
 
     expect(res.status).toBe(200);
@@ -241,7 +259,7 @@ describe("PATCH /appeals/:id", () => {
   test("approved 但 vendor_id 為 null，不呼叫 violation-points", async () => {
     const res = await request(app)
       .patch(`/appeals/${noVendorId}`)
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ status: "approved" });
 
     expect(res.status).toBe(200);
@@ -252,12 +270,12 @@ describe("PATCH /appeals/:id", () => {
     // 先建一筆新的
     const created = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ order_id: 1, reason: "要被拒絕的" });
 
     const res = await request(app)
       .patch(`/appeals/${created.body.id}`)
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ status: "rejected" });
 
     expect(res.status).toBe(200);
@@ -269,12 +287,12 @@ describe("PATCH /appeals/:id", () => {
 
     const created = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ order_id: 1, reason: "violation 會失敗的" });
 
     const res = await request(app)
       .patch(`/appeals/${created.body.id}`)
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ status: "approved" });
 
     expect(res.status).toBe(200);
@@ -284,7 +302,7 @@ describe("PATCH /appeals/:id", () => {
   test("status 不合法回傳 400", async () => {
     const res = await request(app)
       .patch(`/appeals/${createdId}`)
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ status: "invalid_status" });
 
     expect(res.status).toBe(400);
@@ -293,7 +311,7 @@ describe("PATCH /appeals/:id", () => {
   test("非 admin 無法審核，回傳 403", async () => {
     const res = await request(app)
       .patch(`/appeals/${createdId}`)
-      .set("Authorization", `Bearer ${empToken}`)
+      .set(empToken)
       .send({ status: "approved" });
 
     expect(res.status).toBe(403);
@@ -302,7 +320,7 @@ describe("PATCH /appeals/:id", () => {
   test("不存在的 appeal 回傳 404", async () => {
     const res = await request(app)
       .patch("/appeals/9999")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ status: "rejected" });
 
     expect(res.status).toBe(404);
@@ -316,7 +334,7 @@ describe("DELETE /appeals/:id", () => {
   test("admin 可以刪除 appeal", async () => {
     const res = await request(app)
       .delete(`/appeals/${createdId}`)
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
 
     expect(res.status).toBe(200);
   });
@@ -324,7 +342,7 @@ describe("DELETE /appeals/:id", () => {
   test("刪除不存在的回傳 404", async () => {
     const res = await request(app)
       .delete("/appeals/9999")
-      .set("Authorization", `Bearer ${adminToken}`);
+      .set(adminAuth);
 
     expect(res.status).toBe(404);
   });
@@ -332,12 +350,12 @@ describe("DELETE /appeals/:id", () => {
   test("非 admin 無法刪除，回傳 403", async () => {
     const created = await request(app)
       .post("/appeals")
-      .set("Authorization", `Bearer ${adminToken}`)
+      .set(adminAuth)
       .send({ order_id: 1, reason: "要被刪的" });
 
     const res = await request(app)
       .delete(`/appeals/${created.body.id}`)
-      .set("Authorization", `Bearer ${empToken}`);
+      .set(empToken);
 
     expect(res.status).toBe(403);
   });
