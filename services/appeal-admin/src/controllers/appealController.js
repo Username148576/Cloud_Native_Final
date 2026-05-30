@@ -1,16 +1,33 @@
 const pool = require("../db/pool");
+const { addViolationPoint } = require("../middleware/vendorService");
+const { getOrderById } = require("../middleware/orderService");
 
 // POST /appeals  (admin, employee)
+// Body: { order_id, reason }
+// employee_id 和 vendor_id 自動從 Order service 查取
 const createAppeal = async (req, res) => {
-  const { order_id, vendor_id, employee_id, reason } = req.body;
+  const { order_id, reason } = req.body;
   if (!order_id || !reason)
     return res.status(400).json({ error: "order_id and reason required" });
 
-  // employee 只能建立自己的 appeal
+  // 從 Order service 取訂單資料
+  let order;
+  try {
+    order = await getOrderById(order_id);
+  } catch (err) {
+    if (err.message.includes("not found"))
+      return res.status(404).json({ error: `Order ${order_id} not found` });
+    console.error("[createAppeal] order service error:", err.message);
+    return res.status(502).json({ error: "Failed to fetch order from Order service" });
+  }
+
+  const employee_id = order.employee_id || null;
+  const vendor_id   = order.vendor_id   || null;
+
+  // employee 只能對自己的訂單申訴
   if (req.user.role === "employee") {
-    const bodyEmployeeId = parseInt(employee_id, 10);
-    if (!bodyEmployeeId || bodyEmployeeId !== req.user.userId) {
-      return res.status(403).json({ error: "employee_id must match your own userId" });
+    if (!employee_id || employee_id !== req.user.userId) {
+      return res.status(403).json({ error: "You can only appeal your own orders" });
     }
   }
 
@@ -18,7 +35,7 @@ const createAppeal = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO appeals (order_id, vendor_id, employee_id, reason)
        VALUES ($1, $2, $3, $4) RETURNING *`,
-      [order_id, vendor_id || null, employee_id || null, reason]
+      [order_id, vendor_id, employee_id, reason]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -39,7 +56,6 @@ const getAllAppeals = async (req, res) => {
 };
 
 // GET /appeals/user/:userId  (self or admin)
-// 回傳該 user 相關的申訴（employee_id 或 vendor_id 符合）
 const getAppealsByUser = async (req, res) => {
   const { userId } = req.params;
   try {
@@ -57,6 +73,7 @@ const getAppealsByUser = async (req, res) => {
 };
 
 // PATCH /appeals/:id  (admin) — 審核結果
+// approved + vendor_id 存在 → 自動呼叫 Vendor service 違規點數 +1
 const updateAppeal = async (req, res) => {
   const { id } = req.params;
   const { status, refund_amount, admin_notes } = req.body;
@@ -74,7 +91,19 @@ const updateAppeal = async (req, res) => {
       [status, refund_amount, admin_notes, id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: "Appeal not found" });
-    res.json(result.rows[0]);
+
+    const appeal = result.rows[0];
+
+    if (status === "approved" && appeal.vendor_id) {
+      try {
+        await addViolationPoint(appeal.vendor_id);
+        console.log(`[appeal] vendor ${appeal.vendor_id} violation point +1 (appeal ${id})`);
+      } catch (err) {
+        console.error(`[appeal] failed to add violation point for vendor ${appeal.vendor_id}:`, err.message);
+      }
+    }
+
+    res.json(appeal);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to update appeal" });
