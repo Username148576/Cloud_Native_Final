@@ -317,6 +317,45 @@ services:
                   if role   then kong.service.request.set_header("X-User-Role",  role)   end
                   if email  then kong.service.request.set_header("X-User-Email", email)  end
 
+  # ── Order & Inventory ──────────────────────────────────────
+  - name: order-inventory-service
+    url: http://172.31.10.107:8081
+    routes:
+      - name: order-inventory-route
+        paths:
+          - /orders
+          - /orders/
+          - /vendor/orders
+          - /inventory
+          - /health
+        strip_path: false
+        plugins:
+          - name: jwt
+            config:
+              secret_is_base64: false
+              key_claim_name: iss
+          - name: pre-function
+            config:
+              access:
+                - |
+                  local auth = kong.request.get_header("Authorization")
+                  if not auth then return end
+                  local token = auth:sub(8)
+                  local parts = {}
+                  for part in token:gmatch("[^.]+") do parts[#parts+1]=part end
+                  if #parts < 2 then return end
+                  local b64 = parts[2]:gsub("-", "+"):gsub("_", "/")
+                  local pad = (4 - #b64 % 4) % 4
+                  b64 = b64 .. string.rep("=", pad)
+                  local decoded = ngx.decode_base64(b64)
+                  if not decoded then return end
+                  local userId = decoded:match('"user_id"%s*:%s*(%d+)') or decoded:match('"userId"%s*:%s*(%d+)')
+                  local role   = decoded:match('"role"%s*:%s*"([^"]+)"')
+                  local email  = decoded:match('"email"%s*:%s*"([^"]+)"')
+                  if userId then kong.service.request.set_header("X-User-Id", userId) end
+                  if role   then kong.service.request.set_header("X-User-Role", role) end
+                  if email  then kong.service.request.set_header("X-User-Email", email) end
+
 consumers:
   - username: iam-issued
     jwt_secrets:

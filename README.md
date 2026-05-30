@@ -1,5 +1,73 @@
 # 企業訂餐系統 — 微服務後端
 
+## 整體架構
+ 
+```
+                   +-------------------------------+
+                   |       Browser / Client        |
+                   |      http://EC2-D:8080        |
+                   +---------------+---------------+
+                                   |
+                        HTTP EC2-A:8000 (all APIs)
+                                   |
+                                   v
++-----------------------------------------------------------------+
+|                        EC2-A  (Public IP)                       |
+|                                                                 |
+|  +-----------------------------------------------------------+  |
+|  |                Kong API Gateway  :8000                    |  |
+|  |                                                           |  |
+|  |  JWT verify         Rate limit 60/min/IP                  |  |
+|  |  CORS preflight     X-User-* header inject                |  |
+|  +--------+---------------------------+----------------------+  |
+|           |                           |                         |
+|   /iam  /notification          /order  /vendor-menu             |
+|   /recommendation              /register                        |
+|   /billing  /appeal-admin                                       |
+|           |                           |                         |
+|           v                           v                         |
+|  +---------------------+    +----------------------+            |
+|  |  Microservices (PM2)|    |  VPC internal forward|            |
+|  |                     |    |  via Private IP      |            |
+|  |  IAM          :3001 |    +----------+-----------+            |
+|  |  Notification :3002 |               |                        |
+|  |  Recommendation:3003|               |                        |
+|  |  Billing      :3004 |               |                        |
+|  |  Appeal-Admin :3005 |               |                        |
+|  +----------+----------+               |                        |
+|             |                          |                        |
+|             | SSL                      |  VPC Private Network   |
+|             v                          |                        |
+|  +---------------------+               |                        |
+|  |   RDS PostgreSQL    |               |                        |
+|  |   (Private Subnet)  |               |                        |
+|  |                     |               |                        |
+|  |  iam_db             |               |                        |
+|  |  notification_db    |               |                        |
+|  |  recommendation_db  |               |                        |
+|  |  billing_db         |               |                        |
+|  |  appeal_admin_db    |               |                        |
+|  +---------------------+               |                        |
+|                                        |                        |
++----------------------------------------+------------------------+
+                                         |
+                    +--------------------+--------------------+
+                    |                                         |
+                    v                                         v
+     +--------------------------+             +--------------------------+
+     |  EC2-B  (Private IP)     |             |  EC2-C  (Private IP)     |
+     |                          |             |                          |
+     |  Vendor-Menu  :3007      |             |  Order Service  :3006    |
+     |  Register     :3008      |             |                          |
+     |                          |             +--------------------------+
+     |  +--------------------+  |
+     |  |     AWS S3         |  |
+     |  |  menu images       |  |
+     |  |  vendor docs       |  |
+     |  +--------------------+  |
+     +--------------------------+
+```
+
 ## 服務一覽
 
 | 服務 | Port | 資料庫 | 說明 |
@@ -20,6 +88,8 @@
 │   └── workflows/
 │       └── ci.yml              ← CI/CD Pipeline（自動測試 + 部署）
 └── services/
+    ├── kong/
+    |   └── kong.yml            ← API Gateway (Header轉換 + Rate Limit)
     ├── docker-compose.yml      ← 本機開發用：一鍵啟動所有服務 + DB
     ├── ecosystem.config.js     ← PM2 設定（生產環境用）
     ├── .env.example            ← 環境變數範本
@@ -189,12 +259,12 @@ cd services/appeal-admin && npm install && npm run dev
 ```
 Internet
     ↓
-EC2 t2.micro (Ubuntu)
+EC2 t3.micro (Ubuntu)
     ├── PM2 管理所有微服務（zero-downtime reload）
     ├── Elastic IP（固定公網 IP）
     └── ~/.config/ordering/.env（由 CI 每次部署時注入）
          ↓ SSL 連線
-RDS PostgreSQL db.t3.micro
+RDS PostgreSQL db.t4g.micro
 （每個服務獨立的 DB，共用同一個 RDS instance）
 ```
 
