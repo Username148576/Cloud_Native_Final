@@ -38,13 +38,13 @@ const adminAuth = {
 };
 
 const vendorAuth = {
-  "X-User-Id": "2",
+  "X-User-Id": "3",
   "X-User-Role": "vendor",
   "X-User-Email": "vendor@test.com"
 };
 
 const empToken = {
-  "X-User-Id": "3",
+  "X-User-Id": "2",
   "X-User-Role": "employee",
   "X-User-Email": "employee@test.com"
 };
