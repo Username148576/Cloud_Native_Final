@@ -10,7 +10,7 @@
 
 set -e
 
-KONG_DIR="$HOME/kong"
+KONG_DIR="$HOME/services/kong"
 RENDERED="$KONG_DIR/kong.rendered.yml"
 ENV_FILE="$HOME/.config/ordering/.env"
 if [ -f "$ENV_FILE" ]; then
