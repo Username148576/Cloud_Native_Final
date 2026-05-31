@@ -39,7 +39,9 @@ const getOrdersByVendor = async (vendorId, period) => {
   if (period) {
     const [year, month] = period.split("-");
     url.searchParams.set("from", `${year}-${month}-01`);
-    url.searchParams.set("to", `${year}-${month}-31`);
+    // 注意不同月份的天數
+    const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+    url.searchParams.set("to", `${year}-${month}-${daysInMonth}`);
   }
 
   const response = await fetch(url.toString(), {
