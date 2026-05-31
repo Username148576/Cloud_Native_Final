@@ -29,7 +29,7 @@ const getAdminToken = async () => {
 
 /**
  * 取得特定 vendor 的訂單清單
- * @param {number} vendorId
+ * @param {string} vendorId
  * @param {string} period  e.g. "2024-01"
  * @returns {Promise<Array>}
  */
