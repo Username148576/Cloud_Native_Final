@@ -6,8 +6,26 @@
  * 由 IAM service 簽發、role=admin 的長期 token（或在啟動腳本登入取得）
  */
 
-const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://localhost:3006";
-const INTERNAL_ADMIN_TOKEN = process.env.INTERNAL_ADMIN_TOKEN || "";
+let cachedToken = null;
+let tokenExpiry = 0;
+
+const getAdminToken = async () => {
+  if (cachedToken && Date.now() < tokenExpiry - 5 * 60 * 1000) return cachedToken;
+
+  const res = await fetch(`${process.env.IAM_SERVICE_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: process.env.INTERNAL_ADMIN_EMAIL,
+      password: process.env.INTERNAL_ADMIN_PASSWORD,
+    }),
+  });
+  if (!res.ok) throw new Error("Failed to get internal admin token");
+  const data = await res.json();
+  cachedToken = data.token;
+  tokenExpiry = Date.now() + 24 * 60 * 60 * 1000;
+  return cachedToken;
+};
 
 /**
  * 取得特定 vendor 的訂單清單
@@ -16,7 +34,8 @@ const INTERNAL_ADMIN_TOKEN = process.env.INTERNAL_ADMIN_TOKEN || "";
  * @returns {Promise<Array>}
  */
 const getOrdersByVendor = async (vendorId, period) => {
-  const url = new URL(`${ORDER_SERVICE_URL}/vendor/orders/vendor/${vendorId}`);
+  const token = await getAdminToken();
+  const url = new URL(`${process.env.ORDER_SERVICE_URL}/vendor/orders/vendor/${vendorId}`);
   if (period) {
     const [year, month] = period.split("-");
     url.searchParams.set("from", `${year}-${month}-01`);
@@ -25,7 +44,7 @@ const getOrdersByVendor = async (vendorId, period) => {
 
   const response = await fetch(url.toString(), {
     headers: {
-      Authorization: `Bearer ${INTERNAL_ADMIN_TOKEN}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
   });
