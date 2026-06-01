@@ -211,9 +211,9 @@ const getRecommendations = async (req, res) => {
 };
 
 const refreshCache = async (req, res) => {
-  const { userId } = req.params;
+  const employeeId = parseInt(req.params.userId, 10);
   try {
-    await pool.query("DELETE FROM recommendation_cache WHERE employee_id = $1", [userId]);
+    await pool.query("DELETE FROM recommendation_cache WHERE employee_id = $1", [employeeId]);
     res.json({ message: "Cache cleared, next request will recalculate" });
   } catch (err) {
     console.error(err);
