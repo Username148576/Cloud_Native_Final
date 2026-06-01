@@ -47,11 +47,11 @@ afterAll(async () => {
 describe("POST /billing/statements", () => {
   test("admin 可以建立帳單（自動從 Order service 拉資料）", async () => {
     // mock Order service 回傳假訂單
-    getOrdersByVendor.mockResolvedValue([
+    getOrdersByVendor.mockResolvedValue({ orders: [
       { total_price: 300 },
       { total_price: 450 },
       { total_price: 200 },
-    ]);
+    ] });
 
     const res = await request(app)
       .post("/billing/statements")
