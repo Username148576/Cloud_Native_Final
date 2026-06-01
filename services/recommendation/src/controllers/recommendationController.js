@@ -155,13 +155,13 @@ const getRecommendations = async (req, res) => {
     }
 
     // 2. 查 IAM 取得 factory zone
-    const factoryZone = await getfactoryZoneByEmployeeId(req.header, employeeId);
+    const factoryZone = await getfactoryZoneByEmployeeId(req, employeeId);
     console.log(`[recommendation] employee ${employeeId} factory zone: ${factoryZone}`);
 
     // 3. 拿訂單（失敗不中斷，退化成熱門推薦）
     let orders = [];
     try {
-      orders = await getRecentOrdersByEmployee(req.header, employeeId, 20);
+      orders = await getRecentOrdersByEmployee(req, employeeId, 20);
     } catch (err) {
       console.warn(`Order service unavailable for employee ${employeeId}:`, err.message);
     }
