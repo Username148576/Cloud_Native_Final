@@ -2,6 +2,7 @@ const getfactoryZoneByEmployeeId = async (headers, employeeId) => {
   const userId = headers['x-user-id'];
   const userRole = headers['x-user-role'];
   const userEmail = headers['x-user-email'];
+  console.log(userId, userRole, userEmail);
   const url = new URL(`http://127.0.0.1:3001/employees/user/${employeeId}`);
   const res = await fetch(url.toString(), {
     method: 'GET',
