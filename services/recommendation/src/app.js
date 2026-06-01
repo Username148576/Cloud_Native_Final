@@ -5,6 +5,6 @@ const app = express();
 app.use(cors()); app.use(express.json());
 app.get("/health", (_, res) => res.json({ service: "recommendation", status: "ok" }));
 app.use("/recommendations", routes);
-app.use((req, res) => res.status(404).json({ error: "Not found" }));
+app.use((req, res) => {console.log(`[404] 找不到路由: ${req.method} ${req.originalUrl}`); res.status(404).json({ error: "Not found" })});
 app.use((err, req, res, next) => { console.error(err.stack); res.status(500).json({ error: "Internal server error" }); });
 module.exports = app;
