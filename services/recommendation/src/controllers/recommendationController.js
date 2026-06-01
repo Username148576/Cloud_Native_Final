@@ -169,7 +169,7 @@ const getRecommendations = async (req, res) => {
     // 4. 拿今日菜單
     let menus = [];
     try {
-      menus = await getTodayMenus(factoryZone);
+      menus = await getTodayMenus(req, factoryZone);
     } catch (err) {
       return res.status(502).json({ error: `Menu service error: ${err.message}` });
     }
