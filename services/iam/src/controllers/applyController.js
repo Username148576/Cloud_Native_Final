@@ -2,7 +2,7 @@ const {
   sendApplicationCode, 
   sendAcceptanceEmail, 
   sendRejectionEmail 
-} = require("../middleware/mail");
+} = require("../middleware/mailer");
 
 // POST /apply/send-code
 // 前端產生驗證碼後，呼叫這支 API 讓後端寄信
