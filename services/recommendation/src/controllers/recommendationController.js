@@ -144,6 +144,7 @@ const getRecommendations = async (req, res) => {
       "SELECT * FROM recommendation_cache WHERE employee_id = $1 AND expired_at > NOW()",
       [employeeId]
     );
+    console.log(`[recommendation] employee ${employeeId} cache hit: ${cached.rows.length > 0}`);
     if (cached.rows[0]) {
       return res.json({
         source: "cache",
