@@ -11,7 +11,7 @@
  * @param {string} period  e.g. "2024-01"
  * @returns {Promise<Array>}
  */
-const getOrdersByVendor = async (headers, vendorId, period) => {
+const getOrdersByVendor = async (req, vendorId, period) => {
   const url = new URL(`${process.env.ORDER_SERVICE_URL}/vendor/orders/vendor/${vendorId}`);
   if (period) {
     const [year, month] = period.split("-");
@@ -24,9 +24,9 @@ const getOrdersByVendor = async (headers, vendorId, period) => {
   const response = await fetch(url.toString(), {
     headers: {
       "Content-Type": "application/json",
-      'X-User-ID': headers['x-user-id'],
-      'X-User-Role': headers['x-user-role'],
-      'X-User-Email': headers['x-user-email']
+      'X-User-ID': req.headers['x-user-id'],
+      'X-User-Role': req.headers['x-user-role'],
+      'X-User-Email': req.headers['x-user-email']
     },
   });
 

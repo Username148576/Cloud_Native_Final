@@ -12,7 +12,7 @@ const createStatement = async (req, res) => {
 
   try {
     // 1. 向 Order service 取得該 vendor 的訂單
-    const orders = await getOrdersByVendor(req.header, vendor_id, statement_period);
+    const orders = await getOrdersByVendor(req, vendor_id, statement_period);
 
     // 2. 計算總金額（Order 資料裡有 total_price）
     const total_amount = orders.reduce((sum, o) => sum + (o.total_price || 0), 0);

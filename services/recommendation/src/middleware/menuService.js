@@ -12,6 +12,7 @@
 const getTodayMenus = async (req, factoryZone) => {
   const url = new URL(`${process.env.MENU_SERVICE_URL}/api/v1/menus`);
   url.searchParams.set("factoryZone", factoryZone);
+  console.log(url.toString());
   const res = await fetch(url.toString(), {
     method: "GET",
     headers: {

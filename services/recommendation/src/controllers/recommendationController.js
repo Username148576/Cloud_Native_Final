@@ -166,6 +166,8 @@ const getRecommendations = async (req, res) => {
       console.warn(`Order service unavailable for employee ${employeeId}:`, err.message);
     }
 
+    console.log(orders);
+
     // 4. 拿今日菜單
     let menus = [];
     try {
