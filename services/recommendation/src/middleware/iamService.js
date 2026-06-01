@@ -12,7 +12,12 @@ const getfactoryZoneByEmployeeId = async (headers, employeeId) => {
       'X-User-Email': userEmail
     }
   });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(`IAM service error ${res.status}: ${data.error || "unknown"}`);
+  }
   const data = await res.json();
+  console.log(data);
   return data.factory_zone;
 };
 
