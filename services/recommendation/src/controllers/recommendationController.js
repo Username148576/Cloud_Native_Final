@@ -1,6 +1,7 @@
 const pool = require("../db/pool");
 const { getRecentOrdersByEmployee } = require("../middleware/orderService");
 const { getTodayMenus } = require("../middleware/menuService");
+const { getfactoryZoneByEmployeeId } = require("../middleware/iamService");
 const { recommend } = require("../middleware/engine");
 
 // ── user_preferences ─────────────────────────────────────────
@@ -153,15 +154,11 @@ const getRecommendations = async (req, res) => {
       });
     }
 
-    // 用employeeId查factoryZone
-    const factoryZoneResult = await pool.query(
-      "SELECT factory_zone FROM employees WHERE id = $1",
-      [employeeId]
-    );
-    const factoryZone = factoryZoneResult.rows[0]?.factory_zone;
+    // 2. 查 IAM 取得 factory zone
+    const factoryZone = await getfactoryZoneByEmployeeId(employeeId);
     console.log(`[recommendation] employee ${employeeId} factory zone: ${factoryZone}`);
 
-    // 2. 拿訂單（失敗不中斷，退化成熱門推薦）
+    // 3. 拿訂單（失敗不中斷，退化成熱門推薦）
     let orders = [];
     try {
       orders = await getRecentOrdersByEmployee(employeeId, 20);
@@ -169,7 +166,7 @@ const getRecommendations = async (req, res) => {
       console.warn(`Order service unavailable for employee ${employeeId}:`, err.message);
     }
 
-    // 3. 拿今日菜單
+    // 4. 拿今日菜單
     let menus = [];
     try {
       menus = await getTodayMenus(factoryZone);
@@ -181,10 +178,10 @@ const getRecommendations = async (req, res) => {
       return res.json({ source: "live", recommendations: [], debug: { message: "今日無可用菜單" } });
     }
 
-    // 4. 推薦引擎
+    // 5. 推薦引擎
     const { recommendations, debug } = recommend(orders, menus);
 
-    // 5. 存 cache 到今天 23:59:59
+    // 6. 存 cache 到今天 23:59:59
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
     await pool.query(
@@ -195,7 +192,7 @@ const getRecommendations = async (req, res) => {
       [employeeId, JSON.stringify(recommendations), endOfDay]
     );
 
-    // 6. 更新 user_preferences
+    // 7. 更新 user_preferences
     await pool.query(
       `INSERT INTO user_preferences (employee_id, preference_tags, last_calculation)
        VALUES ($1, $2, NOW())
