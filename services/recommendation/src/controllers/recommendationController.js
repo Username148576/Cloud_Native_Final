@@ -152,6 +152,14 @@ const getRecommendations = async (req, res) => {
       });
     }
 
+    // 用employeeId查factoryZone
+    const factoryZoneResult = await pool.query(
+      "SELECT factory_zone FROM employees WHERE id = $1",
+      [employeeId]
+    );
+    const factoryZone = factoryZoneResult.rows[0]?.factory_zone;
+    console.log(`[recommendation] employee ${employeeId} factory zone: ${factoryZone}`);
+
     // 2. 拿訂單（失敗不中斷，退化成熱門推薦）
     let orders = [];
     try {
@@ -163,7 +171,7 @@ const getRecommendations = async (req, res) => {
     // 3. 拿今日菜單
     let menus = [];
     try {
-      menus = await getTodayMenus();
+      menus = await getTodayMenus(factoryZone);
     } catch (err) {
       return res.status(502).json({ error: `Menu service error: ${err.message}` });
     }

@@ -8,6 +8,7 @@ const {
   createEmployee, getAllEmployees, getEmployeeByUser,
   updateEmployee, updatePhone, deleteEmployee,
 } = require("../controllers/employeeController");
+const { sendCode, sendApproval, sendRejection } = require("../controllers/applyController");
 const { authenticate, authorize, requireSelf } = require("../middleware/auth");
 
 const router = express.Router();
@@ -31,5 +32,10 @@ router.get(   "/employees/user/:userId",       authenticate, requireSelf,       
 router.patch( "/employees/:id",                authenticate, authorize("admin"),              updateEmployee);
 router.patch( "/employees/user/:userId/phone", authenticate, requireSelf,                    updatePhone);
 router.delete("/employees/:id",                authenticate, authorize("admin"),              deleteEmployee);
+
+// ── Apply ─────────────────────────────────────────────────────
+router.post("/apply/send-code", authenticate, authorize("admin"), sendCode);
+router.post("/apply/send-approval", authenticate, authorize("admin"), sendApproval);
+router.post("/apply/send-rejection", authenticate, authorize("admin"), sendRejection);
 
 module.exports = router;

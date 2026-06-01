@@ -36,11 +36,10 @@ const getAdminToken = async () => {
  *
  * @returns {Promise<Array>}
  */
-const getTodayMenus = async () => {
+const getTodayMenus = async (factoryZone) => {
   const token = await getAdminToken();
-  const today = new Date().toISOString().split("T")[0]; // "2024-01-15"
-
   const url = new URL(`${process.env.MENU_SERVICE_URL}/api/v1/menus`);
+  url.searchParams.set("factoryZone", factoryZone);
   const res = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${token}` },
   });
