@@ -48,20 +48,20 @@ describe("POST /billing/statements", () => {
   test("admin 可以建立帳單（自動從 Order service 拉資料）", async () => {
     // mock Order service 回傳假訂單
     getOrdersByVendor.mockResolvedValue({ orders: [
-      { total_price: 300, status: "completed" },
-      { total_price: 450, status: "cancelled" },
-      { total_price: 200, status: "completed" },
+      { total_price: 300, status: "completed", vendor_id: "123456789012345647890123456789012" },
+      { total_price: 450, status: "cancelled", vendor_id: "123456789012345647890123456789012" },
+      { total_price: 200, status: "completed", vendor_id: "123456789012345647890123456789012" },
     ] });
 
     const res = await request(app)
       .post("/billing/statements")
       .set(adminAuth)
-      .send({ vendor_id: 2, statement_period: "2024-01" });
+      .send({ vendor_id: "123456789012345647890123456789012", statement_period: "2024-01" });
 
     expect(res.status).toBe(201);
     expect(res.body.total_amount).toBe(500); // 300+200
     expect(res.body.order_count).toBe(3);
-    expect(res.body.vendor_id).toBe(2);
+    expect(res.body.vendor_id).toBe("123456789012345647890123456789012");
     createdStatementId = res.body.id;
   });
 
@@ -73,7 +73,7 @@ describe("POST /billing/statements", () => {
     const res = await request(app)
       .post("/billing/statements")
       .set(adminAuth)
-      .send({ vendor_id: 2, statement_period: "2024-02" });
+      .send({ vendor_id: "123456789012345647890123456789012", statement_period: "2024-02" });
 
     expect(res.status).toBe(502);
   });
@@ -90,7 +90,7 @@ describe("POST /billing/statements", () => {
     const res = await request(app)
       .post("/billing/statements")
       .set(vendorAuth)
-      .send({ vendor_id: 2, statement_period: "2024-01" });
+      .send({ vendor_id: "123456789012345647890123456789012", statement_period: "2024-01" });
     expect(res.status).toBe(403);
   });
 });
@@ -115,7 +115,7 @@ describe("GET /billing/statements", () => {
 describe("GET /billing/statements/user/:userId", () => {
   test("vendor 可以取得自己的帳單", async () => {
     const res = await request(app)
-      .get("/billing/statements/user/2")
+      .get("/billing/statements/user/123456789012345647890123456789012")
       .set(vendorAuth);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -128,7 +128,7 @@ describe("GET /billing/statements/user/:userId", () => {
       "X-User-Email": "other@test.com"
     };
     const res = await request(app)
-      .get("/billing/statements/user/2")
+      .get("/billing/statements/user/123456789012345647890123456789012")
       .set(otherAuth);
     expect(res.status).toBe(403);
   });
@@ -158,7 +158,7 @@ describe("POST /billing/incidents", () => {
     const res = await request(app)
       .post("/billing/incidents")
       .set(adminAuth)
-      .send({ vendor_id: 2, description: "食物品質問題", deducted_points: 10 });
+      .send({ vendor_id: "123456789012345647890123456789012", description: "食物品質問題", deducted_points: 10 });
     expect(res.status).toBe(201);
     expect(res.body.deducted_points).toBe(10);
     createdIncidentId = res.body.id;
@@ -168,7 +168,7 @@ describe("POST /billing/incidents", () => {
     const res = await request(app)
       .post("/billing/incidents")
       .set(adminAuth)
-      .send({ vendor_id: 2 });
+      .send({ vendor_id: "123456789012345647890123456789012" });
     expect(res.status).toBe(400);
   });
 });
@@ -186,7 +186,7 @@ describe("GET /billing/incidents", () => {
 describe("GET /billing/incidents/user/:userId", () => {
   test("vendor 可以取得自己的違規記錄", async () => {
     const res = await request(app)
-      .get("/billing/incidents/user/2")
+      .get("/billing/incidents/user/123456789012345647890123456789012")
       .set(vendorAuth);
     expect(res.status).toBe(200);
   });

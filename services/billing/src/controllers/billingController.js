@@ -20,6 +20,8 @@ const createStatement = async (req, res) => {
       .filter((o) => o.status === "completed")
       .reduce((sum, o) => sum + (o.total_price || 0), 0);
 
+    const vendor_id = orders.length > 0 ? orders[0].vendor_id : null;
+
     // 3. 建立帳單
     const result = await pool.query(
       `INSERT INTO billing_statements (vendor_id, total_amount, statement_period)
