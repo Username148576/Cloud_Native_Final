@@ -50,7 +50,7 @@ const empToken = {
 };
 
 // ── 假訂單資料 ───────────────────────────────────────────────
-const fakeOrder = { id: 1, employee_id: 2, vendor_id: 10 };
+const fakeOrder = { id: "12345678901234567890123456789012", employee_id: 2, vendor_id: 10 };
 
 let createdId     = null;
 let noVendorId    = null;
@@ -79,14 +79,14 @@ describe("POST /appeals", () => {
     const res = await request(app)
       .post("/appeals")
       .set(adminAuth)
-      .send({ order_id: 1, reason: "餐點有問題" });
+      .send({ order_id: "12345678901234567890123456789012", reason: "餐點有問題" });
 
     expect(res.status).toBe(201);
-    // expect(res.body.status).toBe("pending");
-    // expect(res.body.order_id).toBe(1);
-    // expect(res.body.employee_id).toBe(fakeOrder.employee_id);
-    // expect(res.body.vendor_id).toBe(fakeOrder.vendor_id);
-    // expect(getOrderById).toHaveBeenCalledWith("1");
+    expect(res.body.status).toBe("pending");
+    expect(res.body.order_id).toBe("12345678901234567890123456789012");
+    expect(res.body.employee_id).toBe(fakeOrder.employee_id);
+    expect(res.body.vendor_id).toBe(fakeOrder.vendor_id);
+    expect(getOrderById).toHaveBeenCalledWith("12345678901234567890123456789012");
     createdId = res.body.id;
   });
 
@@ -95,7 +95,7 @@ describe("POST /appeals", () => {
     const res = await request(app)
       .post("/appeals")
       .set(empToken)
-      .send({ order_id: 1, reason: "我要申訴" });
+      .send({ order_id: "12345678901234567890123456789012", reason: "我要申訴" });
 
     expect(res.status).toBe(201);
     expect(res.body.employee_id).toBe(2);
@@ -103,7 +103,7 @@ describe("POST /appeals", () => {
 
   test("employee 不能對別人的訂單申訴，回傳 403", async () => {
     // order 的 employee_id 是 2，但 token 是 userId 99
-    getOrderById.mockResolvedValue({ oid: 1, employee_id: 2, vendor_id: 10 });
+    getOrderById.mockResolvedValue({ oid: "12345678901234567890123456789012", employee_id: 2, vendor_id: 10 });
     const otherEmpToken = {
       "X-User-Id": "99",
       "X-User-Role": "employee",
@@ -113,7 +113,7 @@ describe("POST /appeals", () => {
     const res = await request(app)
       .post("/appeals")
       .set(otherEmpToken)
-      .send({ order_id: 1, reason: "試圖申訴別人的單" });
+      .send({ order_id: "12345678901234567890123456789012", reason: "試圖申訴別人的單" });
 
     expect(res.status).toBe(403);
   });
@@ -122,7 +122,7 @@ describe("POST /appeals", () => {
     const res = await request(app)
       .post("/appeals")
       .set(vendorAuth)
-      .send({ order_id: 1, reason: "vendor 申訴" });
+      .send({ order_id: "12345678901234567890123456789012", reason: "vendor 申訴" });
 
     expect(res.status).toBe(403);
   });
@@ -131,7 +131,7 @@ describe("POST /appeals", () => {
     const res = await request(app)
       .post("/appeals")
       .set(adminAuth)
-      .send({ order_id: 1 });
+      .send({ order_id: "12345678901234567890123456789012" });
 
     expect(res.status).toBe(400);
     expect(getOrderById).not.toHaveBeenCalled();
@@ -152,7 +152,7 @@ describe("POST /appeals", () => {
     const res = await request(app)
       .post("/appeals")
       .set(adminAuth)
-      .send({ order_id: 99, reason: "找不到的單" });
+      .send({ order_id: "00000000000000000000000000000000", reason: "找不到的單" });
 
     expect(res.status).toBe(404);
   });
@@ -163,18 +163,18 @@ describe("POST /appeals", () => {
     const res = await request(app)
       .post("/appeals")
       .set(adminAuth)
-      .send({ order_id: 1, reason: "order service 掛了" });
+      .send({ order_id: "12345678901234567890123456789012", reason: "order service 掛了" });
 
     expect(res.status).toBe(502);
   });
 
   test("order 沒有 vendor_id 時，vendor_id 存 null", async () => {
-    getOrderById.mockResolvedValue({ id: 5, employee_id: 2, vendor_id: null });
+    getOrderById.mockResolvedValue({ id: "12345678901234567890123456789012", employee_id: 2, vendor_id: null });
 
     const res = await request(app)
       .post("/appeals")
       .set(adminAuth)
-      .send({ order_id: 5, reason: "沒有廠商的單" });
+      .send({ order_id: "12345678901234567890123456789012", reason: "沒有廠商的單" });
 
     expect(res.status).toBe(201);
     expect(res.body.vendor_id).toBeNull();
@@ -253,7 +253,7 @@ describe("PATCH /appeals/:id", () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("approved");
     expect(res.body.refund_amount).toBe(150);
-    // expect(addViolationPoint).toHaveBeenCalledWith(fakeOrder.vendor_id);
+    expect(addViolationPoint).toHaveBeenCalledWith(fakeOrder.vendor_id);
   });
 
   test("approved 但 vendor_id 為 null，不呼叫 violation-points", async () => {
@@ -271,7 +271,7 @@ describe("PATCH /appeals/:id", () => {
     const created = await request(app)
       .post("/appeals")
       .set(adminAuth)
-      .send({ order_id: 1, reason: "要被拒絕的" });
+      .send({ order_id: "12345678901234567890123456789012", reason: "要被拒絕的" });
 
     const res = await request(app)
       .patch(`/appeals/${created.body.id}`)
@@ -288,7 +288,7 @@ describe("PATCH /appeals/:id", () => {
     const created = await request(app)
       .post("/appeals")
       .set(adminAuth)
-      .send({ order_id: 1, reason: "violation 會失敗的" });
+      .send({ order_id: "12345678901234567890123456789012", reason: "violation 會失敗的" });
 
     const res = await request(app)
       .patch(`/appeals/${created.body.id}`)
@@ -351,7 +351,7 @@ describe("DELETE /appeals/:id", () => {
     const created = await request(app)
       .post("/appeals")
       .set(adminAuth)
-      .send({ order_id: 1, reason: "要被刪的" });
+      .send({ order_id: "12345678901234567890123456789012", reason: "要被刪的" });
 
     const res = await request(app)
       .delete(`/appeals/${created.body.id}`)

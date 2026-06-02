@@ -34,7 +34,7 @@ router.patch( "/employees/user/:userId/phone", authenticate, requireSelf,       
 router.delete("/employees/:id",                authenticate, authorize("admin"),              deleteEmployee);
 
 // ── Apply ─────────────────────────────────────────────────────
-router.post("/apply/send-code", authenticate, authorize("admin"), sendCode);
+router.post("/apply/send-code", sendCode);
 router.post("/apply/send-approval", authenticate, authorize("admin"), sendApproval);
 router.post("/apply/send-rejection", authenticate, authorize("admin"), sendRejection);
 
