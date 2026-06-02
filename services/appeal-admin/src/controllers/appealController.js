@@ -31,6 +31,8 @@ const createAppeal = async (req, res) => {
     }
   }
 
+  console.log(`[createAppeal] Creating appeal for order ${order_id} (employee_id: ${employee_id}, vendor_id: ${vendor_id})`);
+
   try {
     const result = await pool.query(
       `INSERT INTO appeals (order_id, vendor_id, employee_id, reason)
