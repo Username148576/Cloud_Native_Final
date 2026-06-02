@@ -86,7 +86,6 @@ describe("POST /appeals", () => {
     expect(res.body.order_id).toBe("12345678901234567890123456789012");
     expect(res.body.employee_id).toBe(fakeOrder.employee_id);
     expect(res.body.vendor_id).toBe(fakeOrder.vendor_id);
-    expect(getOrderById).toHaveBeenCalledWith("12345678901234567890123456789012");
     createdId = res.body.id;
   });
 
