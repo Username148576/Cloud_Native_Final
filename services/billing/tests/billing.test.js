@@ -48,9 +48,9 @@ describe("POST /billing/statements", () => {
   test("admin 可以建立帳單（自動從 Order service 拉資料）", async () => {
     // mock Order service 回傳假訂單
     getOrdersByVendor.mockResolvedValue({ orders: [
-      { total_price: 300, status: "completed", vendor_id: "123456789012345647890123456789012" },
-      { total_price: 450, status: "cancelled", vendor_id: "123456789012345647890123456789012" },
-      { total_price: 200, status: "completed", vendor_id: "123456789012345647890123456789012" },
+      { total_price: 300, status: "completed", vendor_id: "12345678901234567890123456789012" },
+      { total_price: 450, status: "cancelled", vendor_id: "12345678901234567890123456789012" },
+      { total_price: 200, status: "completed", vendor_id: "12345678901234567890123456789012" },
     ] });
 
     const res = await request(app)
