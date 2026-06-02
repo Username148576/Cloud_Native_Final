@@ -22,7 +22,7 @@ const createAppeal = async (req, res) => {
   }
 
   const employee_id = order.employee_id || null;
-  const vendor_id   = order.vendor_id   || null;
+  const vendor_id   = order.vendor_user_id   || null;
 
   // employee 只能對自己的訂單申訴
   if (req.user.role === "employee") {
