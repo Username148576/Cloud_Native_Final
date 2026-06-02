@@ -9,7 +9,7 @@
  * @returns {Promise<{ employee_id: number, vendor_id: number, ...}>}
  */
 const getOrderById = async (req, orderId) => {
-  orderId = orderId.replace(/^ORD-/, '');
+  orderId = orderId.replace(/^ORD-/, '').replace(/-/g, '');
   const res = await fetch(`${process.env.ORDER_SERVICE_URL}/orders/${orderId}`, {
     method: "GET",
     headers: {

@@ -20,8 +20,7 @@ const createStatement = async (req, res) => {
       .filter((o) => o.status === "completed")
       .reduce((sum, o) => sum + (o.total_price || 0), 0);
 
-    const vendor_uuid = orders.length > 0 ? orders[0].vendor_id : null;
-    vendor_uuid = vendor_uuid.replace(/-/g, "");
+    const vendor_uuid = orders.length > 0 ? orders[0].vendor_id?.replace(/-/g, "") : null;
 
     // 3. 建立帳單
     const result = await pool.query(
