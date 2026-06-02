@@ -49,7 +49,7 @@ const empToken = {
 };
 
 // ── 假訂單資料 ───────────────────────────────────────────────
-const fakeOrder = { id: "12345678901234567890123456789012", employee_id: 2, vendor_id: 10 };
+const fakeOrder = { id: "12345678901234567890123456789012", employee_id: 2, vendor_user_id: 10 };
 
 let createdId     = null;
 let noVendorId    = null;
@@ -84,7 +84,7 @@ describe("POST /appeals", () => {
     expect(res.body.status).toBe("pending");
     expect(res.body.order_id).toBe("12345678901234567890123456789012");
     expect(res.body.employee_id).toBe(fakeOrder.employee_id);
-    expect(res.body.vendor_id).toBe(fakeOrder.vendor_id);
+    expect(res.body.vendor_id).toBe(fakeOrder.vendor_user_id);
     expect(getOrderById).toHaveBeenCalledWith(expect.any(Object), "12345678901234567890123456789012");
     createdId = res.body.id;
   });
@@ -102,7 +102,7 @@ describe("POST /appeals", () => {
 
   test("employee 不能對別人的訂單申訴，回傳 403", async () => {
     // order 的 employee_id 是 2，但 token 是 userId 99
-    getOrderById.mockResolvedValue({ oid: "12345678901234567890123456789012", employee_id: 2, vendor_id: 10 });
+    getOrderById.mockResolvedValue({ oid: "12345678901234567890123456789012", employee_id: 2, vendor_user_id: 10 });
     const otherEmpToken = {
       "X-User-Id": "99",
       "X-User-Role": "employee",
@@ -168,7 +168,7 @@ describe("POST /appeals", () => {
   });
 
   test("order 沒有 vendor_id 時，vendor_id 存 null", async () => {
-    getOrderById.mockResolvedValue({ id: "12345678901234567890123456789012", employee_id: 2, vendor_id: null });
+    getOrderById.mockResolvedValue({ id: "12345678901234567890123456789012", employee_id: 2, vendor_user_id: null });
 
     const res = await request(app)
       .post("/appeals")
@@ -252,7 +252,7 @@ describe("PATCH /appeals/:id", () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("approved");
     expect(res.body.refund_amount).toBe(150);
-    expect(addViolationPoint).toHaveBeenCalledWith(expect.any(Object), fakeOrder.vendor_id);
+    expect(addViolationPoint).toHaveBeenCalledWith(expect.any(Object), fakeOrder.vendor_user_id);
   });
 
   test("approved 但 vendor_id 為 null，不呼叫 violation-points", async () => {
