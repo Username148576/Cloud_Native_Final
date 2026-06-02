@@ -61,7 +61,7 @@ describe("POST /billing/statements", () => {
     expect(res.status).toBe(201);
     expect(res.body.total_amount).toBe(500); // 300+200
     expect(res.body.order_count).toBe(3);
-    expect(res.body.vendor_id).toBe("123456789012345647890123456789012");
+    expect(res.body.vendor_id).toBe("12345678901234567890123456789012");
     createdStatementId = res.body.id;
   });
 
