@@ -31,10 +31,9 @@ const vendorAuth = {
 };
 
 let createdStatementId = null;
-let createdIncidentId = null;
 
 beforeAll(async () => {
-  await pool.query("TRUNCATE billing_statements, vendor_incidents RESTART IDENTITY CASCADE");
+  await pool.query("TRUNCATE billing_statements RESTART IDENTITY CASCADE");
 });
 
 afterAll(async () => {
