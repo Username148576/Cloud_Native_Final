@@ -48,9 +48,9 @@ describe("POST /billing/statements", () => {
   test("admin 可以建立帳單（自動從 Order service 拉資料）", async () => {
     // mock Order service 回傳假訂單
     getOrdersByVendor.mockResolvedValue({ orders: [
-      { total_price: 300 },
-      { total_price: 450 },
-      { total_price: 200 },
+      { total_price: 300, status: "completed" },
+      { total_price: 450, status: "cancelled" },
+      { total_price: 200, status: "completed" },
     ] });
 
     const res = await request(app)
@@ -59,7 +59,7 @@ describe("POST /billing/statements", () => {
       .send({ vendor_id: 2, statement_period: "2024-01" });
 
     expect(res.status).toBe(201);
-    expect(res.body.total_amount).toBe(950); // 300+450+200
+    expect(res.body.total_amount).toBe(500); // 300+200
     expect(res.body.order_count).toBe(3);
     expect(res.body.vendor_id).toBe(2);
     createdStatementId = res.body.id;
