@@ -42,6 +42,7 @@ services:
         paths:
           - /iam/auth/login
           - /iam/auth/verify-email
+          - /iam/apply/send-code
         strip_path: false
         plugins:
           - name: pre-function
