@@ -27,7 +27,12 @@ const checkService = async ({ name, port }) => {
     throw new Error(`${name} readiness failed: ${JSON.stringify(ready.body)}`);
   }
 
-  if (!metrics.res.ok || !metrics.body.includes(`ordering_service_info{service="${name}"}`)) {
+  if (
+    !metrics.res.ok ||
+    !metrics.body.includes(`ordering_service_info{service="${name}"}`) ||
+    !metrics.body.includes("http_requests_total") ||
+    !metrics.body.includes("http_request_duration_seconds")
+  ) {
     throw new Error(`${name} metrics endpoint failed`);
   }
 

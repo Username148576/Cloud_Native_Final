@@ -34,7 +34,8 @@ describe("platform endpoints", () => {
 
     expect(res.status).toBe(200);
     expect(res.text).toContain('ordering_service_info{service="iam"} 1');
-    expect(res.text).toContain("ordering_http_requests_total");
+    expect(res.text).toContain("http_requests_total");
+    expect(res.text).toContain("http_request_duration_seconds");
   });
 
   test("unknown routes include a request id for troubleshooting", async () => {

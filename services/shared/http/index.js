@@ -1,14 +1,37 @@
 const { randomUUID } = require("crypto");
+const path = require("path");
+
+const loadPackage = (name) => {
+  const searchPaths = [
+    require.main?.filename ? path.dirname(require.main.filename) : null,
+    process.cwd(),
+    __dirname,
+  ].filter(Boolean);
+
+  return require(require.resolve(name, { paths: searchPaths }));
+};
+
+const client = loadPackage("prom-client");
+const pino = loadPackage("pino");
+const pinoHttp = loadPackage("pino-http");
 
 const startedAt = new Date();
 
-const escapeLabel = (value) =>
-  String(value)
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, " ");
+const normalizeRoutePath = (routePath) => {
+  if (Array.isArray(routePath)) return normalizeRoutePath(routePath[0]);
+  if (routePath instanceof RegExp) return routePath.toString();
+  return routePath ? String(routePath) : "";
+};
 
-const round = (value) => Math.round(value * 1000) / 1000;
+const getRouteTemplate = (req) => {
+  if (!req.route) return "unmatched";
+
+  const basePath = req.baseUrl || "";
+  const routePath = normalizeRoutePath(req.route.path);
+
+  if (!routePath || routePath === "/") return basePath || "/";
+  return `${basePath}${routePath.startsWith("/") ? routePath : `/${routePath}`}`;
+};
 
 const createRequestContext = () => (req, res, next) => {
   const requestId = req.get("X-Request-Id") || randomUUID();
@@ -20,70 +43,87 @@ const createRequestContext = () => (req, res, next) => {
   next();
 };
 
-const createRequestLogger = ({ serviceName }) => (req, res, next) => {
-  const start = Date.now();
+const createRequestLogger = ({ serviceName }) => {
+  if (process.env.NODE_ENV === "test") {
+    return (_req, _res, next) => next();
+  }
 
-  res.on("finish", () => {
-    if (process.env.NODE_ENV === "test") return;
-
-    console.log(JSON.stringify({
-      level: "info",
-      service: serviceName,
+  return pinoHttp({
+    logger: pino({
+      base: { service: serviceName },
+      timestamp: pino.stdTimeFunctions.isoTime,
+    }),
+    genReqId: (req, res) => {
+      const requestId = req.requestId || req.get("X-Request-Id") || randomUUID();
+      req.requestId = requestId;
+      req.id = requestId;
+      res.setHeader("X-Request-Id", requestId);
+      return requestId;
+    },
+    customProps: (req, res) => ({
       requestId: req.requestId,
       method: req.method,
-      path: req.originalUrl,
+      route: getRouteTemplate(req),
       statusCode: res.statusCode,
-      durationMs: Date.now() - start,
-    }));
+    }),
+    customSuccessMessage: () => "request_completed",
+    customErrorMessage: () => "request_failed",
   });
-
-  next();
 };
 
 const createRequestMetrics = ({ serviceName }) => {
-  const requestCounts = new Map();
-  let totalRequests = 0;
-  let totalDurationMs = 0;
+  const registry = new client.Registry();
+
+  client.collectDefaultMetrics({ register: registry });
+
+  const serviceInfo = new client.Gauge({
+    name: "ordering_service_info",
+    help: "Service metadata.",
+    labelNames: ["service"],
+    registers: [registry],
+  });
+
+  const httpRequests = new client.Counter({
+    name: "http_requests_total",
+    help: "Total HTTP requests.",
+    labelNames: ["method", "route", "status_code"],
+    registers: [registry],
+  });
+
+  const httpDuration = new client.Histogram({
+    name: "http_request_duration_seconds",
+    help: "HTTP request duration in seconds.",
+    labelNames: ["method", "route", "status_code"],
+    buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+    registers: [registry],
+  });
+
+  serviceInfo.set({ service: serviceName }, 1);
 
   const metricsMiddleware = (req, res, next) => {
-    const start = process.hrtime.bigint();
+    const endTimer = httpDuration.startTimer();
 
     res.on("finish", () => {
-      const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
-      const key = `${req.method}|${res.statusCode}`;
+      const labels = {
+        method: req.method,
+        route: getRouteTemplate(req),
+        status_code: String(res.statusCode),
+      };
 
-      requestCounts.set(key, (requestCounts.get(key) || 0) + 1);
-      totalRequests += 1;
-      totalDurationMs += durationMs;
+      httpRequests.inc(labels);
+      endTimer(labels);
     });
 
     next();
   };
 
-  const metricsHandler = (_req, res) => {
-    const service = escapeLabel(serviceName);
-    const lines = [
-      "# HELP ordering_service_info Service metadata.",
-      "# TYPE ordering_service_info gauge",
-      `ordering_service_info{service="${service}"} 1`,
-      "# HELP ordering_http_requests_total Total HTTP requests by method and status.",
-      "# TYPE ordering_http_requests_total counter",
-    ];
-
-    for (const [key, count] of requestCounts.entries()) {
-      const [method, status] = key.split("|");
-      lines.push(
-        `ordering_http_requests_total{service="${service}",method="${escapeLabel(method)}",status="${escapeLabel(status)}"} ${count}`
-      );
+  const metricsHandler = async (_req, res, next) => {
+    try {
+      res.set("Content-Type", registry.contentType);
+      res.end(await registry.metrics());
+    } catch (err) {
+      next(err);
     }
-
-    lines.push(
-      "# HELP ordering_http_request_duration_ms_avg Average HTTP request duration in milliseconds.",
-      "# TYPE ordering_http_request_duration_ms_avg gauge",
-      `ordering_http_request_duration_ms_avg{service="${service}"} ${round(totalRequests ? totalDurationMs / totalRequests : 0)}`
-    );
-
-    res.type("text/plain; version=0.0.4").send(`${lines.join("\n")}\n`);
   };
 
   return { metricsMiddleware, metricsHandler };

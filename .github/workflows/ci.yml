@@ -7,10 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  # ════════════════════════════════════════════════════════════
-  # Job 1: Test
-  # 每次 push 或 PR 都跑，用臨時 PostgreSQL container 測試
-  # ════════════════════════════════════════════════════════════
   test:
     name: Run Tests
     runs-on: ubuntu-latest
@@ -97,6 +93,7 @@ jobs:
 
       - name: Init test databases
         run: |
+          sudo apt-get update
           sudo apt-get install -y postgresql-client
           PGPASSWORD=mypassword psql -h localhost -p 5433 -U myuser -d iam_test_db            -f services/iam/schema.sql
           PGPASSWORD=mypassword psql -h localhost -p 5434 -U myuser -d notification_test_db   -f services/notification/schema.sql
@@ -174,10 +171,6 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: npm ci && npm test
 
-  # ════════════════════════════════════════════════════════════
-  # Job 2: Deploy
-  # 只有 push 到 main 且測試全過才執行
-  # ════════════════════════════════════════════════════════════
   deploy:
     name: Deploy to EC2
     runs-on: ubuntu-latest
@@ -185,8 +178,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      # Step 1: 把所有 Secrets 寫成 .env 傳進 EC2
-      # .env 不進 git，每次部署都從 Secrets 重新產生
       - name: Write .env to EC2
         uses: appleboy/ssh-action@v1.0.3
         env:
@@ -201,12 +192,13 @@ jobs:
           INTERNAL_ADMIN_PASSWORD: ${{ secrets.INTERNAL_ADMIN_PASSWORD }}
           ORDER_SERVICE_URL: ${{ secrets.ORDER_SERVICE_URL }}
           MENU_SERVICE_URL: ${{ secrets.MENU_SERVICE_URL }}
+          LOKI_URL: ${{ secrets.LOKI_URL }}
           DB_SSL: true
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: JWT_SECRET,DB_PASSWORD,RDS_HOST,RDS_PASS,EC2_HOST,SMTP_USER,SMTP_PASS,EMAIL_FROM,INTERNAL_ADMIN_PASSWORD,ORDER_SERVICE_URL,MENU_SERVICE_URL,DB_SSL
+          envs: JWT_SECRET,DB_PASSWORD,RDS_HOST,RDS_PASS,EC2_HOST,SMTP_USER,SMTP_PASS,EMAIL_FROM,INTERNAL_ADMIN_PASSWORD,ORDER_SERVICE_URL,MENU_SERVICE_URL,LOKI_URL,DB_SSL
           script: |
             mkdir -p ~/.config/ordering
             cat > ~/.config/ordering/.env << ENVEOF
@@ -227,12 +219,11 @@ jobs:
             INTERNAL_ADMIN_PASSWORD=${INTERNAL_ADMIN_PASSWORD}
             ORDER_SERVICE_URL=${ORDER_SERVICE_URL}
             MENU_SERVICE_URL=${MENU_SERVICE_URL}
+            LOKI_URL=${LOKI_URL:-http://172.31.2.29:3100/loki/api/v1/push}
             DB_SSL=true
             ENVEOF
 
-      # Step 2: 更新程式碼並重啟服務
-      # ~/repo 是 git repo 根目錄，~/services 是 symlink 指向 ~/repo/services
-      - name: Pull & restart services
+      - name: Pull, restart, and enable monitoring
         uses: appleboy/ssh-action@v1.0.3
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -244,23 +235,20 @@ jobs:
           script: |
             set -e
 
-            # repo 被刪除時自動重新 clone
             if [ ! -d ~/repo/.git ]; then
               rm -rf ~/repo
               git clone https://github.com/${GITHUB_REPOSITORY}.git ~/repo
             fi
 
-            # 確保 symlink 正確指向 repo 內的 services/
-            rm -rf ~/services
             ln -sfn ~/repo/services ~/services
 
-            # 更新程式碼
             cd ~/repo
-            git pull origin main
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
 
             cd ~/services
 
-            # 第一次部署時初始化 DB，之後跳過
             if [ ! -f ~/.db_initialized ]; then
               bash scripts/deploy.sh --init
               touch ~/.db_initialized
@@ -268,5 +256,5 @@ jobs:
               bash scripts/deploy.sh
             fi
 
-            # 部署 Kong（注入 JWT_SECRET 後 reload）
             bash scripts/deploy-kong.sh
+            bash scripts/deploy-promtail.sh

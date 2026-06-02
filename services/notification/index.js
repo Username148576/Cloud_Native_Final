@@ -1,3 +1,13 @@
 require("dotenv").config();
 const app = require("./src/app");
-app.listen(process.env.PORT || 3002, () => console.log("Notification Service started"));
+
+const PORT = process.env.PORT || 3002;
+
+app.listen(PORT, () => {
+  console.log(JSON.stringify({
+    level: "info",
+    service: "notification",
+    message: "service_started",
+    port: Number(PORT),
+  }));
+});

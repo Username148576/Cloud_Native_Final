@@ -1,6 +1,12 @@
 _format_version: "3.0"
 
 plugins:
+  - name: prometheus
+    config:
+      status_code_metrics: true
+      latency_metrics: true
+      bandwidth_metrics: true
+
   # 全域 rate limit
   - name: rate-limiting
     config:

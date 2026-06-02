@@ -53,6 +53,13 @@ echo "→ 健康檢查..."
 sleep 3
 STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/status)
 if [ "$STATUS" = "200" ]; then
+  METRICS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8001/metrics)
+  if [ "$METRICS_STATUS" != "200" ]; then
+    echo "Kong metrics check failed: HTTP $METRICS_STATUS"
+    echo "   sudo docker logs kong"
+    exit 1
+  fi
+
   echo "✅ Kong 正常，Admin API: http://localhost:8001"
   echo "   Proxy:     http://localhost:8000"
 else
