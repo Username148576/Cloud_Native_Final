@@ -15,8 +15,10 @@ const createStatement = async (req, res) => {
     const orders_json = await getOrdersByVendor(req, vendor_id, statement_period);
     const orders = orders_json.orders;
 
-    // 2. 計算總金額（Order 資料裡有 total_price）
-    const total_amount = orders.reduce((sum, o) => sum + (o.total_price || 0), 0);
+    // 2. 計算總金額（Order 資料裡有 total_price跟status 只要算completed的訂單）
+    const total_amount = orders
+      .filter((o) => o.status === "completed")
+      .reduce((sum, o) => sum + (o.total_price || 0), 0);
 
     // 3. 建立帳單
     const result = await pool.query(
