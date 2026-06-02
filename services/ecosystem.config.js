@@ -120,6 +120,8 @@ module.exports = {
         ...commonEnv,
         PORT: 3005,
         DB_NAME: "appeal_admin_db",
+        ORDER_SERVICE_URL: process.env.ORDER_SERVICE_URL,
+        MENU_SERVICE_URL: process.env.MENU_SERVICE_URL,
       },
     },
   ],
