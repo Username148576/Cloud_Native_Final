@@ -250,10 +250,10 @@ describe("PATCH /appeals/:id", () => {
       .set(adminAuth)
       .send({ status: "approved", refund_amount: 150, admin_notes: "確認退款" });
 
-    expect(res.status).toBe(500);
-    // expect(res.body.status).toBe("approved");
-    // expect(res.body.refund_amount).toBe(150);
-    // expect(addViolationPoint).toHaveBeenCalledWith(fakeOrder.vendor_id);
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("approved");
+    expect(res.body.refund_amount).toBe(150);
+    expect(addViolationPoint).toHaveBeenCalledWith(fakeOrder.vendor_id);
   });
 
   test("approved 但 vendor_id 為 null，不呼叫 violation-points", async () => {
@@ -336,7 +336,7 @@ describe("DELETE /appeals/:id", () => {
       .delete(`/appeals/${createdId}`)
       .set(adminAuth);
 
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(200);
   });
 
   test("刪除不存在的回傳 404", async () => {
