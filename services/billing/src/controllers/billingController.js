@@ -24,9 +24,9 @@ const createStatement = async (req, res) => {
 
     // 3. 建立帳單
     const result = await pool.query(
-      `INSERT INTO billing_statements (vendor_id, total_amount, statement_period)
-       VALUES ($1, $2, $3) RETURNING *`,
-      [vendor_uuid, total_amount, statement_period]
+      `INSERT INTO billing_statements (vendor_uuid, vendor_id, total_amount, statement_period)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [vendor_uuid, vendor_id, total_amount, statement_period]
     );
 
     res.status(201).json({
@@ -88,90 +88,6 @@ const deleteStatement = async (req, res) => {
   }
 };
 
-// ── vendor_incidents ─────────────────────────────────────────
-
-// POST /billing/incidents  (admin)
-const createIncident = async (req, res) => {
-  const { vendor_id, description, deducted_points } = req.body;
-  if (!vendor_id || !description)
-    return res.status(400).json({ error: "vendor_id and description required" });
-
-  try {
-    const result = await pool.query(
-      `INSERT INTO vendor_incidents (vendor_id, description, deducted_points)
-       VALUES ($1, $2, $3) RETURNING *`,
-      [vendor_id, description, deducted_points || 0]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to create incident" });
-  }
-};
-
-// GET /billing/incidents  (admin)
-const getAllIncidents = async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM vendor_incidents ORDER BY created_at DESC");
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch incidents" });
-  }
-};
-
-// GET /billing/incidents/user/:userId  (self vendor or admin)
-const getIncidentsByUser = async (req, res) => {
-  const { userId } = req.params;
-  try {
-    const result = await pool.query(
-      "SELECT * FROM vendor_incidents WHERE vendor_id = $1 ORDER BY created_at DESC",
-      [userId]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch incidents" });
-  }
-};
-
-// PATCH /billing/incidents/:id  (admin)
-const updateIncident = async (req, res) => {
-  const { id } = req.params;
-  const { description, deducted_points } = req.body;
-  try {
-    const result = await pool.query(
-      `UPDATE vendor_incidents
-       SET description     = COALESCE($1, description),
-           deducted_points = COALESCE($2, deducted_points)
-       WHERE id = $3 RETURNING *`,
-      [description, deducted_points, id]
-    );
-    if (!result.rows[0]) return res.status(404).json({ error: "Not found" });
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to update incident" });
-  }
-};
-
-// DELETE /billing/incidents/:id  (admin)
-const deleteIncident = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const result = await pool.query(
-      "DELETE FROM vendor_incidents WHERE id = $1 RETURNING id",
-      [id]
-    );
-    if (!result.rows[0]) return res.status(404).json({ error: "Not found" });
-    res.json({ message: "Incident deleted" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to delete incident" });
-  }
-};
-
 module.exports = {
   createStatement, getAllStatements, getStatementsByUser, deleteStatement,
-  createIncident, getAllIncidents, getIncidentsByUser, updateIncident, deleteIncident,
 };

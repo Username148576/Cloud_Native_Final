@@ -61,7 +61,8 @@ describe("POST /billing/statements", () => {
     expect(res.status).toBe(201);
     expect(res.body.total_amount).toBe(500); // 300+200
     expect(res.body.order_count).toBe(3);
-    expect(res.body.vendor_id).toBe("12345678901234567890123456789012");
+    expect(res.body.vendor_id).toBe(2);
+    expect(res.body.vendor_uuid).toBe("12345678901234567890123456789012");
     createdStatementId = res.body.id;
   });
 
@@ -147,75 +148,5 @@ describe("DELETE /billing/statements/:id", () => {
       .delete("/billing/statements/9999")
       .set(adminAuth);
     expect(res.status).toBe(404);
-  });
-});
-
-// ════════════════════════════════════════════════════════════
-// vendor_incidents
-// ════════════════════════════════════════════════════════════
-describe("POST /billing/incidents", () => {
-  test("admin 可以建立違規記錄", async () => {
-    const res = await request(app)
-      .post("/billing/incidents")
-      .set(adminAuth)
-      .send({ vendor_id: 2, description: "食物品質問題", deducted_points: 10 });
-    expect(res.status).toBe(201);
-    expect(res.body.deducted_points).toBe(10);
-    createdIncidentId = res.body.id;
-  });
-
-  test("缺少必要欄位回傳 400", async () => {
-    const res = await request(app)
-      .post("/billing/incidents")
-      .set(adminAuth)
-      .send({ vendor_id: 2 });
-    expect(res.status).toBe(400);
-  });
-});
-
-describe("GET /billing/incidents", () => {
-  test("admin 可以取得所有違規記錄", async () => {
-    const res = await request(app)
-      .get("/billing/incidents")
-      .set(adminAuth);
-    expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
-  });
-});
-
-describe("GET /billing/incidents/user/:userId", () => {
-  test("vendor 可以取得自己的違規記錄", async () => {
-    const res = await request(app)
-      .get("/billing/incidents/user/2")
-      .set(vendorAuth);
-    expect(res.status).toBe(200);
-  });
-});
-
-describe("PATCH /billing/incidents/:id", () => {
-  test("admin 可以更新違規記錄", async () => {
-    const res = await request(app)
-      .patch(`/billing/incidents/${createdIncidentId}`)
-      .set(adminAuth)
-      .send({ deducted_points: 20, description: "更新說明" });
-    expect(res.status).toBe(200);
-    expect(res.body.deducted_points).toBe(20);
-  });
-
-  test("不存在的記錄回傳 404", async () => {
-    const res = await request(app)
-      .patch("/billing/incidents/9999")
-      .set(adminAuth)
-      .send({ description: "test" });
-    expect(res.status).toBe(404);
-  });
-});
-
-describe("DELETE /billing/incidents/:id", () => {
-  test("admin 可以刪除違規記錄", async () => {
-    const res = await request(app)
-      .delete(`/billing/incidents/${createdIncidentId}`)
-      .set(adminAuth);
-    expect(res.status).toBe(200);
   });
 });
