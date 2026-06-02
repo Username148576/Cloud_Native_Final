@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # ── Databases ────────────────────────────────────────────────
   postgres-iam:
@@ -86,8 +84,8 @@ services:
   # ── Services ─────────────────────────────────────────────────
   iam:
     build:
-      context: ./iam
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: iam/Dockerfile
     image: ordering/iam:latest
     ports:
       - "3001:3001"
@@ -110,7 +108,7 @@ services:
       postgres-iam:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/ready || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -119,8 +117,8 @@ services:
 
   notification:
     build:
-      context: ./notification
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: notification/Dockerfile
     image: ordering/notification:latest
     ports:
       - "3002:3002"
@@ -136,7 +134,7 @@ services:
       postgres-notification:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/ready || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -145,8 +143,8 @@ services:
 
   recommendation:
     build:
-      context: ./recommendation
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: recommendation/Dockerfile
     image: ordering/recommendation:latest
     ports:
       - "3003:3003"
@@ -169,7 +167,7 @@ services:
       iam:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/ready || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -178,8 +176,8 @@ services:
 
   billing:
     build:
-      context: ./billing
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: billing/Dockerfile
     image: ordering/billing:latest
     ports:
       - "3004:3004"
@@ -201,7 +199,7 @@ services:
       iam:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/ready || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -210,8 +208,8 @@ services:
 
   appeal-admin:
     build:
-      context: ./appeal-admin
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: appeal-admin/Dockerfile
     image: ordering/appeal-admin:latest
     ports:
       - "3005:3005"
@@ -227,11 +225,30 @@ services:
       postgres-appeal:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3005/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3005/ready || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 10s
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      iam:
+        condition: service_healthy
+      notification:
+        condition: service_healthy
+      recommendation:
+        condition: service_healthy
+      billing:
+        condition: service_healthy
+      appeal-admin:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

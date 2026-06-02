@@ -119,7 +119,7 @@ jobs:
           SMTP_PASS: fakepassword
           EMAIL_FROM: test@example.com
           FRONTEND_URL: http://localhost:3001
-        run: npm install && npm test
+        run: npm ci && npm test
 
       - name: Test Notification
         working-directory: services/notification
@@ -130,7 +130,7 @@ jobs:
           DB_USER: myuser
           DB_PASSWORD: mypassword
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        run: npm install && npm test
+        run: npm ci && npm test
 
       - name: Test Recommendation
         working-directory: services/recommendation
@@ -146,7 +146,7 @@ jobs:
           MENU_SERVICE_URL: http://localhost:3007
           INTERNAL_ADMIN_EMAIL: admin@test.com
           INTERNAL_ADMIN_PASSWORD: fakepassword
-        run: npm install && npm test
+        run: npm ci && npm test
 
       - name: Test Billing
         working-directory: services/billing
@@ -161,7 +161,7 @@ jobs:
           ORDER_SERVICE_URL: http://localhost:3006
           INTERNAL_ADMIN_EMAIL: admin@test.com
           INTERNAL_ADMIN_PASSWORD: fakepassword
-        run: npm install && npm test
+        run: npm ci && npm test
 
       - name: Test Appeal-Admin
         working-directory: services/appeal-admin
@@ -172,7 +172,7 @@ jobs:
           DB_USER: myuser
           DB_PASSWORD: mypassword
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        run: npm install && npm test
+        run: npm ci && npm test
 
   # ════════════════════════════════════════════════════════════
   # Job 2: Deploy

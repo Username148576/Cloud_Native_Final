@@ -4,6 +4,13 @@
   "private": true,
   "description": "企業訂餐系統微服務根目錄",
   "scripts": {
+    "test": "npm run test:iam && npm run test:notification && npm run test:recommendation && npm run test:billing && npm run test:appeal",
+    "test:iam": "npm --prefix iam test",
+    "test:notification": "npm --prefix notification test",
+    "test:recommendation": "npm --prefix recommendation test",
+    "test:billing": "npm --prefix billing test",
+    "test:appeal": "npm --prefix appeal-admin test",
+    "smoke:health": "node scripts/smoke-health.js",
     "deploy": "bash scripts/deploy.sh",
     "deploy:init": "bash scripts/deploy.sh --init",
     "dev:iam": "cd iam && npm run dev",

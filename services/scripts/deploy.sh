@@ -73,7 +73,7 @@ info "Step 4：安裝 npm 套件..."
 for svc in iam notification recommendation billing appeal-admin; do
   echo "  installing $svc..."
   cd "$ROOT_DIR/$svc"
-  npm install --production --silent
+  npm ci --omit=dev --silent
 done
 cd "$ROOT_DIR"
 success "所有套件安裝完成"
@@ -97,15 +97,15 @@ fi
 pm2 save
 success "PM2 設定已儲存"
 
-# ── Step 8：健康檢查 ──────────────────────────────────────────
-info "Step 8：健康檢查（等待 10 秒服務啟動）..."
+# ── Step 8：Readiness 檢查 ───────────────────────────────────
+info "Step 8：Readiness 檢查（等待 10 秒服務啟動）..."
 sleep 10
 
 ALL_OK=true
 for svc in iam:3001 notification:3002 recommendation:3003 billing:3004 appeal-admin:3005; do
   NAME="${svc%%:*}"
   PORT="${svc##*:}"
-  if curl -sf "http://localhost:$PORT/health" > /dev/null 2>&1; then
+  if curl -sf "http://localhost:$PORT/ready" > /dev/null 2>&1; then
     echo "  ✅ $NAME (:$PORT) — OK"
   else
     echo "  ❌ $NAME (:$PORT) — FAILED"

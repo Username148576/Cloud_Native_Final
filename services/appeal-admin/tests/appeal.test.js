@@ -13,7 +13,6 @@ process.env.INTERNAL_ADMIN_EMAIL  = "admin@test.com";
 process.env.INTERNAL_ADMIN_PASSWORD = "admin123";
 
 const request = require("supertest");
-const jwt     = require("jsonwebtoken");
 const app     = require("../src/app");
 const pool    = require("../src/db/pool");
 

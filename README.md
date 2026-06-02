@@ -88,6 +88,10 @@
 │   └── workflows/
 │       └── ci.yml              ← CI/CD Pipeline（自動測試 + 部署）
 └── services/
+    ├── shared/
+    │   └── http/                ← 共用 request id、health/readiness、metrics、Gateway auth
+    ├── monitoring/
+    │   └── prometheus.yml       ← Prometheus scrape 設定
     ├── kong/
     |   └── kong.yml            ← API Gateway (Header轉換 + Rate Limit)
     ├── docker-compose.yml      ← 本機開發用：一鍵啟動所有服務 + DB
@@ -113,8 +117,38 @@
     ├── notification/           （同上結構）
     ├── recommendation/         （同上結構，多 middleware/engine.js、orderService.js、menuService.js）
     ├── billing/                （同上結構，多 middleware/orderService.js）
-    └── appeal-admin/           （同上結構）
+    └── appeal-admin/           （同上結構，多 middleware/orderService.js、menuService.js）
 ```
+
+---
+
+## 平台可靠性與可觀測性
+
+五個微服務共用 `services/shared/http` 平台層，避免每個服務重複維護同一套 Gateway 驗證、錯誤處理與健康檢查邏輯。之後若要新增「評價系統」等新服務，只要複製既有服務結構並接上共用平台層，就能直接具備相同的基本能力。
+
+| Endpoint | 用途 | 說明 |
+|----------|------|------|
+| `GET /health` | Liveness | 確認服務 process 存活，回傳服務名稱、版本、啟動時間與 uptime |
+| `GET /ready` | Readiness | 執行 `SELECT 1` 檢查資料庫連線，部署與容器 healthcheck 使用此端點 |
+| `GET /metrics` | Monitoring | 輸出 Prometheus 格式 metrics，包含 request count 與平均延遲 |
+
+其他可靠性設計：
+
+- 每個請求都會產生或沿用 `X-Request-Id`，錯誤回應也會帶回 request id，方便從 API Gateway、PM2 log 追查問題。
+- Docker Compose 與 Dockerfile 都使用 `/ready` 作為 healthcheck，避免資料庫斷線時仍被判定為健康。
+- `monitoring/prometheus.yml` 可讓 Prometheus 定期抓取五個服務的 `/metrics`。
+- 部署腳本最後會逐一檢查五個服務的 `/ready`，任一服務未 ready 就讓部署流程失敗。
+
+---
+
+## 評分標準對照
+
+| 評分項目 | 專案落地做法 |
+|----------|--------------|
+| 程式碼品質 | 共用 `shared/http` 平台層統一 Gateway auth、request id、錯誤處理、健康檢查與 metrics；各服務使用 lockfile 與 `npm ci` 建置，依賴版本可重現 |
+| 架構設計與可擴展性 | 每個服務獨立資料庫 schema、獨立 controller/routes/db 分層，Kong 統一路由與驗證；新增服務可沿用共用平台層與既有資料夾結構 |
+| 系統測試與驗證 | Jest + Supertest 覆蓋各服務 CRUD、權限、跨服務 mock、推薦引擎，並新增平台端點契約測試；CI 會在 PostgreSQL container 中自動建表與測試 |
+| 運維與可靠性 | EC2 + PM2 zero-downtime reload、RDS SSL、Kong rate limit/CORS/JWT、`/ready` 深度健康檢查、Prometheus `/metrics`、部署後 smoke check |
 
 ---
 
@@ -144,7 +178,7 @@ push / PR to main
 │                  │  3. 首次：bash scripts/deploy.sh --init（初始化 RDS）
 │                  │     之後：bash scripts/deploy.sh（更新重啟）
 │                  │  4. pm2 reload（zero-downtime）
-│                  │  5. 健康檢查 /health
+│                  │  5. Readiness 檢查 /ready
 └──────────────────┘
 ```
 
@@ -189,6 +223,9 @@ docker compose up --build -d
 
 # 查看特定服務 log
 docker compose logs -f iam
+
+# Prometheus 監控頁面
+# http://localhost:9090
 
 # 停止
 docker compose down
@@ -379,6 +416,9 @@ psql -U myuser -d iam_test_db -f services/iam/schema.sql
 **執行測試：**
 
 ```bash
+# 一次執行全部服務測試
+cd services && npm test
+
 # 單一服務
 cd services/iam && npm test
 
@@ -387,19 +427,24 @@ cd services/notification && npm test
 cd services/recommendation && npm test
 cd services/billing && npm test
 cd services/appeal-admin && npm test
+
+# 部署後 smoke check：檢查每個服務的 /ready 與 /metrics
+cd services && npm run smoke:health
 ```
 
 **測試覆蓋範圍：**
 
 | 服務 | 測試項目 |
 |------|---------|
-| IAM | 登入、建立/取得/更新/刪除 user、建立/取得/更新/刪除 employee、權限驗證 |
-| Notification | CRUD、已讀標記、角色權限 |
-| Recommendation | user_preferences CRUD、recommendation_cache CRUD、角色權限、推薦引擎 |
-| Billing | 帳單建立（含 mock Order service）、CRUD、502 錯誤處理 |
-| Appeal-Admin | CRUD、審核流程、employee 只能申訴自己的訂單 |
+| IAM | 登入、建立/取得/更新/刪除 user、建立/取得/更新/刪除 employee、權限驗證、平台端點 |
+| Notification | CRUD、已讀標記、角色權限、平台端點 |
+| Recommendation | user_preferences CRUD、recommendation_cache CRUD、角色權限、推薦引擎、平台端點 |
+| Billing | 帳單建立（含 mock Order service）、CRUD、502 錯誤處理、平台端點 |
+| Appeal-Admin | CRUD、審核流程、employee 只能申訴自己的訂單、平台端點 |
 
 > Billing 測試使用 `jest.mock` 把 Order service 的 HTTP call mock 掉，不需要真的啟動 Order service 就能跑。
+
+平台端點測試會驗證 `/health`、`/ready`、`/metrics` 與 request id，確保運維與監控能力不是只停留在文件描述。
 
 ---
 

@@ -1,22 +1,21 @@
 FROM node:20-alpine
 
-WORKDIR /app
+WORKDIR /app/notification
 
-# 先複製 package.json 利用 Docker layer cache
-# 只有 package.json 變了才重新 npm install
-COPY package*.json ./
-RUN npm install --production && npm cache clean --force
+# Copy package metadata first so Docker can reuse the npm install layer.
+COPY notification/package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# 複製程式碼
-COPY . .
+# Keep the shared platform helpers beside each service in the image.
+COPY shared /app/shared
+COPY notification ./
 
-# 不以 root 執行（安全性）
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
 EXPOSE 3002
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3002/health || exit 1
+  CMD wget -qO- http://localhost:3002/ready || exit 1
 
 CMD ["node", "index.js"]

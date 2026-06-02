@@ -161,8 +161,8 @@ const getRecommendations = async (req, res) => {
     // 3. 拿訂單（失敗不中斷，退化成熱門推薦）
     let orders = [];
     try {
-      orders_json = await getRecentOrdersByEmployee(req, employeeId, 20);
-      orders = orders_json.orders;
+      const ordersJson = await getRecentOrdersByEmployee(req, employeeId, 20);
+      orders = ordersJson.orders;
     } catch (err) {
       console.warn(`Order service unavailable for employee ${employeeId}:`, err.message);
     }
