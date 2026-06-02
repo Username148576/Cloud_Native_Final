@@ -56,7 +56,7 @@ describe("POST /billing/statements", () => {
     const res = await request(app)
       .post("/billing/statements")
       .set(adminAuth)
-      .send({ req: adminAuth, vendor_id: 2, statement_period: "2024-01" });
+      .send({ vendor_id: 2, statement_period: "2024-01" });
 
     expect(res.status).toBe(201);
     expect(res.body.total_amount).toBe(500); // 300+200
@@ -73,7 +73,7 @@ describe("POST /billing/statements", () => {
     const res = await request(app)
       .post("/billing/statements")
       .set(adminAuth)
-      .send({ req: adminAuth, vendor_id: 2, statement_period: "2024-02" });
+      .send({ vendor_id: 2, statement_period: "2024-02" });
 
     expect(res.status).toBe(502);
   });
@@ -90,7 +90,7 @@ describe("POST /billing/statements", () => {
     const res = await request(app)
       .post("/billing/statements")
       .set(vendorAuth)
-      .send({ req: vendorAuth, vendor_id: 2, statement_period: "2024-01" });
+      .send({ vendor_id: 2, statement_period: "2024-01" });
     expect(res.status).toBe(403);
   });
 });
