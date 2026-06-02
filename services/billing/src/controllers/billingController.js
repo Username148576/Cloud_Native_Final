@@ -22,6 +22,8 @@ const createStatement = async (req, res) => {
 
     const vendor_uuid = orders.length > 0 ? orders[0].vendor_id?.replace(/-/g, "") : null;
 
+    console.log(vendor_uuid, vendor_id);
+
     // 3. 建立帳單
     const result = await pool.query(
       `INSERT INTO billing_statements (vendor_uuid, vendor_id, total_amount, statement_period)
