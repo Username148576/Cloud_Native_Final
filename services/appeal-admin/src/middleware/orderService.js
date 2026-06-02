@@ -10,7 +10,6 @@
  */
 const getOrderById = async (req, orderId) => {
   orderId = orderId.replace(/^ORD-/, '');
-  const token = await getAdminToken();
   const res = await fetch(`${process.env.ORDER_SERVICE_URL}/orders/${orderId}`, {
     method: "GET",
     headers: {
