@@ -10,10 +10,12 @@ const createAppeal = async (req, res) => {
   if (!order_id || !reason)
     return res.status(400).json({ error: "order_id and reason required" });
 
+  const cleanedOrderId = order_id.replace(/^ORD-/, '').replace(/-/g, '');
+
   // 從 Order service 取訂單資料
   let order;
   try {
-    order = await getOrderById(req, order_id);
+    order = await getOrderById(req, cleanedOrderId);
   } catch (err) {
     if (err.message.includes("not found"))
       return res.status(404).json({ error: `Order ${order_id} not found` });
@@ -31,13 +33,11 @@ const createAppeal = async (req, res) => {
     }
   }
 
-  console.log(`[createAppeal] Creating appeal for order ${order_id} (employee_id: ${employee_id}, vendor_id: ${vendor_id})`);
-
   try {
     const result = await pool.query(
       `INSERT INTO appeals (order_id, vendor_id, employee_id, reason)
        VALUES ($1, $2, $3, $4) RETURNING *`,
-      [order_id, vendor_id, employee_id, reason]
+      [cleanedOrderId, vendor_id, employee_id, reason]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
