@@ -13,7 +13,7 @@ const createAppeal = async (req, res) => {
   // 從 Order service 取訂單資料
   let order;
   try {
-    order = await getOrderById(order_id);
+    order = await getOrderById(req, order_id);
   } catch (err) {
     if (err.message.includes("not found"))
       return res.status(404).json({ error: `Order ${order_id} not found` });
@@ -96,7 +96,7 @@ const updateAppeal = async (req, res) => {
 
     if (status === "approved" && appeal.vendor_id) {
       try {
-        await addViolationPoint(appeal.vendor_id);
+        await addViolationPoint(req, appeal.vendor_id);
         console.log(`[appeal] vendor ${appeal.vendor_id} violation point +1 (appeal ${id})`);
       } catch (err) {
         console.error(`[appeal] failed to add violation point for vendor ${appeal.vendor_id}:`, err.message);

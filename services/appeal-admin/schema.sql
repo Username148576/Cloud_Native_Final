@@ -5,7 +5,7 @@
 
 CREATE TABLE IF NOT EXISTS appeals (
   id             SERIAL PRIMARY KEY,
-  order_id       INTEGER   NOT NULL,          -- 邏輯關聯 Order service
+  order_id       VARCHAR(32) NOT NULL,        -- 邏輯關聯 Order service
   vendor_id      INTEGER,                     -- 邏輯關聯 Vendor service（你加的）
   employee_id    INTEGER,                     -- 邏輯關聯 IAM.employees.id（你加的）
   reason         TEXT      NOT NULL,
