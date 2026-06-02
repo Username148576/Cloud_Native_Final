@@ -21,6 +21,7 @@ const createStatement = async (req, res) => {
       .reduce((sum, o) => sum + (o.total_price || 0), 0);
 
     const vendor_uuid = orders.length > 0 ? orders[0].vendor_id : null;
+    vendor_uuid = vendor_uuid.replace(/-/g, "");
 
     // 3. 建立帳單
     const result = await pool.query(
