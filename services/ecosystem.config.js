@@ -84,8 +84,6 @@ module.exports = {
         IAM_SERVICE_URL: "http://localhost:3001",
         ORDER_SERVICE_URL: process.env.ORDER_SERVICE_URL,
         MENU_SERVICE_URL: process.env.MENU_SERVICE_URL,
-        INTERNAL_ADMIN_EMAIL: process.env.INTERNAL_ADMIN_EMAIL,
-        INTERNAL_ADMIN_PASSWORD: process.env.INTERNAL_ADMIN_PASSWORD,
       },
     },
     {
@@ -103,8 +101,6 @@ module.exports = {
         DB_NAME: "billing_db",
         IAM_SERVICE_URL: "http://localhost:3001",
         ORDER_SERVICE_URL: process.env.ORDER_SERVICE_URL,
-        INTERNAL_ADMIN_EMAIL: process.env.INTERNAL_ADMIN_EMAIL,
-        INTERNAL_ADMIN_PASSWORD: process.env.INTERNAL_ADMIN_PASSWORD,
       },
     },
     {

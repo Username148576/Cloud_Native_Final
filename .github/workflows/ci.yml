@@ -141,8 +141,6 @@ jobs:
           IAM_SERVICE_URL: http://localhost:3001
           ORDER_SERVICE_URL: http://localhost:3006
           MENU_SERVICE_URL: http://localhost:3007
-          INTERNAL_ADMIN_EMAIL: admin@test.com
-          INTERNAL_ADMIN_PASSWORD: fakepassword
         run: npm ci && npm test
 
       - name: Test Billing
@@ -156,8 +154,6 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           IAM_SERVICE_URL: http://localhost:3001
           ORDER_SERVICE_URL: http://localhost:3006
-          INTERNAL_ADMIN_EMAIL: admin@test.com
-          INTERNAL_ADMIN_PASSWORD: fakepassword
         run: npm ci && npm test
 
       - name: Test Appeal-Admin
@@ -189,7 +185,6 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          INTERNAL_ADMIN_PASSWORD: ${{ secrets.INTERNAL_ADMIN_PASSWORD }}
           ORDER_SERVICE_URL: ${{ secrets.ORDER_SERVICE_URL }}
           MENU_SERVICE_URL: ${{ secrets.MENU_SERVICE_URL }}
           LOKI_URL: ${{ secrets.LOKI_URL }}
@@ -198,7 +193,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: JWT_SECRET,DB_PASSWORD,RDS_HOST,RDS_PASS,EC2_HOST,SMTP_USER,SMTP_PASS,EMAIL_FROM,INTERNAL_ADMIN_PASSWORD,ORDER_SERVICE_URL,MENU_SERVICE_URL,LOKI_URL,DB_SSL
+          envs: JWT_SECRET,DB_PASSWORD,RDS_HOST,RDS_PASS,EC2_HOST,SMTP_USER,SMTP_PASS,EMAIL_FROM,ORDER_SERVICE_URL,MENU_SERVICE_URL,LOKI_URL,DB_SSL
           script: |
             mkdir -p ~/.config/ordering
             cat > ~/.config/ordering/.env << ENVEOF
@@ -215,8 +210,6 @@ jobs:
             SMTP_USER=${SMTP_USER}
             SMTP_PASS=${SMTP_PASS}
             EMAIL_FROM=${EMAIL_FROM}
-            INTERNAL_ADMIN_EMAIL=admin1@test.com
-            INTERNAL_ADMIN_PASSWORD=${INTERNAL_ADMIN_PASSWORD}
             ORDER_SERVICE_URL=${ORDER_SERVICE_URL}
             MENU_SERVICE_URL=${MENU_SERVICE_URL}
             LOKI_URL=${LOKI_URL:-http://172.31.2.29:3100/loki/api/v1/push}
